@@ -1,485 +1,70 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Панель аналитики полётов дронов</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
-    <script src="https://unpkg.com/feather-icons"></script>
-    <style>
-        .gradient-bg {
-            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
-        }
-        .card-hover:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-        }
-        .transition-all {
-            transition: all 0.3s ease;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Карта России</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/feather-icons"></script>
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
-<body class="bg-gray-50 font-sans">
-    <!-- Навигация -->
-    <nav class="gradient-bg text-white shadow-lg">
-        <div class="container mx-auto px-6 py-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-4">
-                    <i data-feather="activity" class="w-8 h-8"></i>
-                    <span class="text-xl font-semibold">DroneFlight Аналитика</span>
-                </div>
-                <div class="hidden md:flex items-center space-x-8">
-                    <a href="#" class="text-white hover:text-blue-200 transition-all">Панель</a>
-                    <a href="#" class="text-white hover:text-blue-200 transition-all">Регионы</a>
-                    <a href="#" class="text-white hover:text-blue-200 transition-all">Отчёты</a>
-                    <a href="#" class="text-white hover:text-blue-200 transition-all">Настройки</a>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <div class="relative">
-                        <i data-feather="bell" class="w-6 h-6"></i>
-                        <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">3</span>
-                    </div>
-                    <div class="w-8 h-8 rounded-full bg-blue-200 flex items-center justify-center">
-                        <i data-feather="user" class="w-4 h-4 text-blue-800"></i>
-                    </div>
-                </div>
-            </div>
+<body class="bg-gray-50 min-h-screen">
+  <header class="bg-white shadow-sm">
+    <div class="container mx-auto px-4 py-6 flex justify-between items-center">
+      <h1 class="text-2xl font-bold text-blue-600">Карта России</h1>
+      <nav>
+        <ul class="flex space-x-6">
+          <li><a href="#" class="text-gray-700 hover:text-blue-600 transition">Главная</a></li>
+          <li><a href="#" class="text-gray-700 hover:text-blue-600 transition">О проекте</a></li>
+          <li><a href="#" class="text-gray-700 hover:text-blue-600 transition">Личный кабинет</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container mx-auto px-4 py-8">
+    <div id="stats-panel" class="grid grid-cols-2 md:grid-cols-4 gap-4 my-6">
+        <div class="stat-card bg-white-50 p-4 rounded-lg shadow text-center">
+            <h3 class="text-lg font-bold text-blue-700">Всего полётов</h3>
+            <p id="total-flights" class="text-2xl font-semibold">—</p>
         </div>
-    </nav>
-
-    <!-- Основной контент -->
-    <div class="container mx-auto px-6 py-8">
-        <!-- Заголовок -->
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-800">Панель активности полётов</h1>
-                <p class="text-gray-600">Анализируйте маршруты и продолжительность полётов дронов по регионам</p>
-            </div>
-            <div class="mt-4 md:mt-0 flex space-x-3">
-                <div class="relative">
-                    <select class="appearance-none bg-white border border-gray-300 rounded-md py-2 pl-3 pr-8 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option>Последние 7 дней</option>
-                        <option>Последние 30 дней</option>
-                        <option selected>Последние 90 дней</option>
-                        <option>За год</option>
-                    </select>
-                    <i data-feather="chevron-down" class="absolute right-3 top-2.5 w-4 h-4 text-gray-500"></i>
-                </div>
-                <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center space-x-2 transition-all">
-                    <i data-feather="download" class="w-4 h-4"></i>
-                    <span>Экспорт</span>
-                </button>
-            </div>
+        <div class="stat-card bg-white-50 p-4 rounded-lg shadow text-center">
+            <h3 class="text-lg font-bold text-blue-700">Общий налёт (ч)</h3>
+            <p id="total-hours" class="text-2xl font-semibold">—</p>
         </div>
-
-        <!-- Статистика -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div class="bg-white rounded-xl shadow-md p-6 transition-all card-hover">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-500 text-sm">Всего полётов</p>
-                        <h3 class="text-2xl font-bold text-gray-800 mt-1">1,248</h3>
-                        <p class="text-green-500 text-sm mt-2 flex items-center">
-                            <i data-feather="trending-up" class="w-4 h-4 mr-1"></i>
-                            <span>12.5% по сравнению с прошлым периодом</span>
-                        </p>
-                    </div>
-                    <div class="bg-blue-100 p-3 rounded-lg">
-                        <i data-feather="navigation" class="w-6 h-6 text-blue-600"></i>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-md p-6 transition-all card-hover">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-500 text-sm">Часы полётов</p>
-                        <h3 class="text-2xl font-bold text-gray-800 mt-1">428ч</h3>
-                        <p class="text-green-500 text-sm mt-2 flex items-center">
-                            <i data-feather="trending-up" class="w-4 h-4 mr-1"></i>
-                            <span>8.3% по сравнению с прошлым периодом</span>
-                        </p>
-                    </div>
-                    <div class="bg-purple-100 p-3 rounded-lg">
-                        <i data-feather="clock" class="w-6 h-6 text-purple-600"></i>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-md p-6 transition-all card-hover">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-500 text-sm">Активные регионы</p>
-                        <h3 class="text-2xl font-bold text-gray-800 mt-1">14</h3>
-                        <p class="text-red-500 text-sm mt-2 flex items-center">
-                            <i data-feather="trending-down" class="w-4 h-4 mr-1"></i>
-                            <span>2.1% по сравнению с прошлым периодом</span>
-                        </p>
-                    </div>
-                    <div class="bg-green-100 p-3 rounded-lg">
-                        <i data-feather="map" class="w-6 h-6 text-green-600"></i>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-md p-6 transition-all card-hover">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-gray-500 text-sm">Средняя продолжительность полёта</p>
-                        <h3 class="text-2xl font-bold text-gray-800 mt-1">21 мин</h3>
-                        <p class="text-green-500 text-sm mt-2 flex items-center">
-                            <i data-feather="trending-up" class="w-4 h-4 mr-1"></i>
-                            <span>5.7% по сравнению с прошлым периодом</span>
-                        </p>
-                    </div>
-                    <div class="bg-yellow-100 p-3 rounded-lg">
-                        <i data-feather="watch" class="w-6 h-6 text-yellow-600"></i>
-                    </div>
-                </div>
-            </div>
+        <div class="stat-card bg-white-50 p-4 rounded-lg shadow text-center">
+            <h3 class="text-lg font-bold text-blue-700">Среднее время (ч)</h3>
+            <p id="avg-time" class="text-2xl font-semibold">—</p>
         </div>
-
-        <!-- Основные графики -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <div class="bg-white rounded-xl shadow-md p-6 transition-all card-hover">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-lg font-semibold text-gray-800">Активность полётов по регионам</h3>
-                    <div class="flex space-x-2">
-                        <button class="px-3 py-1 text-sm bg-blue-100 text-blue-600 rounded-md">Полёты</button>
-                        <button class="px-3 py-1 text-sm text-gray-500 hover:text-gray-700 rounded-md">Продолжительность</button>
-                    </div>
-                </div>
-                <div class="h-80">
-                    <canvas id="regionChart"></canvas>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-md p-6 transition-all card-hover">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-lg font-semibold text-gray-800">Распределение продолжительности полётов</h3>
-                    <div class="flex space-x-2">
-                        <button class="px-3 py-1 text-sm bg-blue-100 text-blue-600 rounded-md">Последние 90 дней</button>
-                        <button class="px-3 py-1 text-sm text-gray-500 hover:text-gray-700 rounded-md">За всё время</button>
-                    </div>
-                </div>
-                <div class="h-80">
-                    <canvas id="durationChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Дополнительные графики -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            <div class="bg-white rounded-xl shadow-md p-6 transition-all card-hover">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-lg font-semibold text-gray-800">Пиковые часы полётов</h3>
-                    <i data-feather="info" class="w-5 h-5 text-gray-400"></i>
-                </div>
-                <div class="h-64">
-                    <canvas id="peakHoursChart"></canvas>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-md p-6 transition-all card-hover">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-lg font-semibold text-gray-800">Цель полётов</h3>
-                    <i data-feather="info" class="w-5 h-5 text-gray-400"></i>
-                </div>
-                <div class="h-64">
-                    <canvas id="purposeChart"></canvas>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-xl shadow-md p-6 transition-all card-hover">
-                <div class="flex items-center justify-between mb-6">
-                    <h3 class="text-lg font-semibold text-gray-800">Используемые модели дронов</h3>
-                    <i data-feather="info" class="w-5 h-5 text-gray-400"></i>
-                </div>
-                <div class="h-64">
-                    <canvas id="droneModelsChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Таблица последних полётов -->
-        <div class="bg-white rounded-xl shadow-md overflow-hidden mb-8 transition-all card-hover">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-lg font-semibold text-gray-800">Последние полёты</h3>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID полёта</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Регион</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Продолжительность</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Статус</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#FL-4829</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Северо-запад</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">32 мин</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2023-05-15</td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Завершён</span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <button class="text-blue-600 hover:text-blue-900 mr-3"><i data-feather="eye" class="w-4 h-4"></i></button>
-                                <button class="text-gray-600 hover:text-gray-900"><i data-feather="download" class="w-4 h-4"></i></button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#FL-4828</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Юго-восток</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">18 мин</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2023-05-14</td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Завершён</span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <button class="text-blue-600 hover:text-blue-900 mr-3"><i data-feather="eye" class="w-4 h-4"></i></button>
-                                <button class="text-gray-600 hover:text-gray-900"><i data-feather="download" class="w-4 h-4"></i></button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#FL-4827</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Центральный</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">45 мин</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2023-05-14</td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">В процессе</span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <button class="text-blue-600 hover:text-blue-900 mr-3"><i data-feather="eye" class="w-4 h-4"></i></button>
-                                <button class="text-gray-600 hover:text-gray-900"><i data-feather="download" class="w-4 h-4"></i></button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#FL-4826</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Северо-восток</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">27 мин</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">2023-05-13</td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Отменён</span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <button class="text-blue-600 hover:text-blue-900 mr-3"><i data-feather="eye" class="w-4 h-4"></i></button>
-                                <button class="text-gray-600 hover:text-gray-900"><i data-feather="download" class="w-4 h-4"></i></button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                <div class="text-sm text-gray-500">Показаны <span class="font-medium">1</span> – <span class="font-medium">4</span> из <span class="font-medium">1248</span> полётов</div>
-                <div class="flex space-x-2">
-                    <button class="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50">Назад</button>
-                    <button class="px-3 py-1 border border-gray-300 rounded-md text-sm text-white bg-blue-600 hover:bg-blue-700">1</button>
-                    <button class="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50">2</button>
-                    <button class="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50">3</button>
-                    <button class="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50">Вперёд</button>
-                </div>
-            </div>
+        <div class="stat-card bg-white-50 p-4 rounded-lg shadow text-center">
+            <h3 class="text-lg font-bold text-blue-700">Среднее количество полетов за день</h3>
+            <p id="avg-flights-day" class="text-2xl font-semibold">—</p>
         </div>
     </div>
 
-    <!-- Подвал -->
-    <footer class="gradient-bg text-white py-8">
-        <div class="container mx-auto px-6">
-            <div class="flex flex-col md:flex-row justify-between items-center">
-                <div class="flex items-center space-x-4 mb-4 md:mb-0">
-                    <i data-feather="activity" class="w-8 h-8"></i>
-                    <span class="text-xl font-semibold">DroneFlight Аналитика</span>
-                </div>
-                <div class="flex space-x-6">
-                    <a href="#" class="hover:text-blue-200 transition-all">Конфиденциальность</a>
-                    <a href="#" class="hover:text-blue-200 transition-all">Условия</a>
-                    <a href="#" class="hover:text-blue-200 transition-all">Контакты</a>
-                </div>
-            </div>
-            <div class="border-t border-blue-400 mt-6 pt-6 text-sm text-blue-200 text-center">
-                © 2023 DroneFlight Аналитика. Все права защищены.
-            </div>
+    <div class="bg-white rounded-xl shadow-md overflow-hidden mb-8 p-6">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">Интерактивная карта</h2>
+      <div class="relative">
+        <div id="map-container" class="w-full h-auto">
+          {% include "map.html" %}
         </div>
-    </footer>
+      </div>
+      <div id="tooltip" class="tooltip"></div>
+    </div>
+    <div id="regions-charts" class="space-y-3 mt-3"></div>
+  </main>
 
-    <script>
-    // Инициализация AOS
-    AOS.init();
-
-    // Инициализация Feather Icons
-    feather.replace();
-
-    // График 1: Активность полётов по регионам (столбчатая диаграмма)
-    const regionCtx = document.getElementById('regionChart').getContext('2d');
-    const regionChart = new Chart(regionCtx, {
-        type: 'bar',
-        data: {
-            labels: ['Северо-запад', 'Юго-восток', 'Центральный', 'Северо-восток', 'Юго-запад', 'Прибрежный'],
-            datasets: [{
-                label: 'Количество полётов',
-                data: [320, 280, 210, 180, 150, 108],
-                backgroundColor: [
-                    'rgba(59, 130, 246, 0.7)',
-                    'rgba(99, 102, 241, 0.7)',
-                    'rgba(16, 185, 129, 0.7)',
-                    'rgba(245, 158, 11, 0.7)',
-                    'rgba(239, 68, 68, 0.7)',
-                    'rgba(139, 92, 246, 0.7)'
-                ],
-                borderColor: [
-                    'rgba(59, 130, 246, 1)',
-                    'rgba(99, 102, 241, 1)',
-                    'rgba(16, 185, 129, 1)',
-                    'rgba(245, 158, 11, 1)',
-                    'rgba(239, 68, 68, 1)',
-                    'rgba(139, 92, 246, 1)'
-                ],
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: { beginAtZero: true, grid: { drawBorder: false } },
-                x: { grid: { display: false } }
-            },
-            plugins: { legend: { display: false } }
-        }
-    });
-
-    // График 2: Распределение продолжительности полётов (линейная диаграмма)
-    const durationCtx = document.getElementById('durationChart').getContext('2d');
-    const durationChart = new Chart(durationCtx, {
-        type: 'line',
-        data: {
-            labels: ['0-10 мин', '10-20 мин', '20-30 мин', '30-40 мин', '40-50 мин', '50+ мин'],
-            datasets: [{
-                label: 'Количество полётов',
-                data: [120, 380, 420, 220, 80, 28],
-                fill: true,
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                borderColor: 'rgba(59, 130, 246, 1)',
-                tension: 0.3,
-                pointBackgroundColor: 'rgba(59, 130, 246, 1)',
-                pointBorderColor: '#fff',
-                pointHoverRadius: 6,
-                pointHoverBorderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: { beginAtZero: true, grid: { drawBorder: false } },
-                x: { grid: { display: false } }
-            },
-            plugins: { legend: { display: false } }
-        }
-    });
-
-    // График 3: Пиковые часы (столбчатая диаграмма)
-    const peakHoursCtx = document.getElementById('peakHoursChart').getContext('2d');
-    const peakHoursChart = new Chart(peakHoursCtx, {
-        type: 'bar',
-        data: {
-            labels: ['6-8', '8-10', '10-12', '12-14', '14-16', '16-18', '18-20'],
-            datasets: [{
-                label: 'Полёты',
-                data: [40, 120, 180, 210, 240, 180, 90],
-                backgroundColor: 'rgba(99, 102, 241, 0.7)',
-                borderColor: 'rgba(99, 102, 241, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: { beginAtZero: true, grid: { drawBorder: false } },
-                x: { grid: { display: false } }
-            },
-            plugins: { legend: { display: false } }
-        }
-    });
-
-    // График 4: Цель полётов (круговая диаграмма)
-    const purposeCtx = document.getElementById('purposeChart').getContext('2d');
-    const purposeChart = new Chart(purposeCtx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Обследование', 'Доставка', 'Фотосъёмка', 'Инспекция', 'Исследование', 'Другое'],
-            datasets: [{
-                data: [35, 20, 15, 12, 10, 8],
-                backgroundColor: [
-                    'rgba(59, 130, 246, 0.7)',
-                    'rgba(16, 185, 129, 0.7)',
-                    'rgba(245, 158, 11, 0.7)',
-                    'rgba(239, 68, 68, 0.7)',
-                    'rgba(139, 92, 246, 0.7)',
-                    'rgba(75, 85, 99, 0.7)'
-                ],
-                borderColor: [
-                    'rgba(59, 130, 246, 1)',
-                    'rgba(16, 185, 129, 1)',
-                    'rgba(245, 158, 11, 1)',
-                    'rgba(239, 68, 68, 1)',
-                    'rgba(139, 92, 246, 1)',
-                    'rgba(75, 85, 99, 1)'
-                ],
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { position: 'right' } },
-            cutout: '70%'
-        }
-    });
-
-    // График 5: Модели дронов (круговая диаграмма)
-    const droneModelsCtx = document.getElementById('droneModelsChart').getContext('2d');
-    const droneModelsChart = new Chart(droneModelsCtx, {
-        type: 'pie',
-        data: {
-            labels: ['DJI Mavic', 'DJI Phantom', 'DJI Inspire', 'Autel Evo', 'Parrot Anafi', 'Другое'],
-            datasets: [{
-                data: [45, 20, 15, 10, 5, 5],
-                backgroundColor: [
-                    'rgba(59, 130, 246, 0.7)',
-                    'rgba(16, 185, 129, 0.7)',
-                    'rgba(245, 158, 11, 0.7)',
-                    'rgba(239, 68, 68, 0.7)',
-                    'rgba(139, 92, 246, 0.7)',
-                    'rgba(75, 85, 99, 0.7)'
-                ],
-                borderColor: [
-                    'rgba(59, 130, 246, 1)',
-                    'rgba(16, 185, 129, 1)',
-                    'rgba(245, 158, 11, 1)',
-                    'rgba(239, 68, 68, 1)',
-                    'rgba(139, 92, 246, 1)',
-                    'rgba(75, 85, 99, 1)'
-                ],
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { position: 'right' } }
-        }
-    });
-</script>
+  <footer class="bg-gray-800 text-white py-8">
+    <div class="container mx-auto px-4 text-center text-gray-400">
+      © 2025 Карта России. Все права защищены.
+    </div>
+  </footer>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- твой js для карты -->
+  <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
 </html>
