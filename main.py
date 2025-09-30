@@ -229,27 +229,16 @@ def flights_regions_stats():
     return jsonify(result)
 
 
-@app.route("/flights/admin_regions_stats")
-def flights_admin_regions_stats():
-    """Статистика по административным регионам"""
+@app.route("/flights/admin_regions_flights")
+def flights_admin_regions_flights():
+    """Статистика по полётам - сортировка по количеству полётов"""
     conn = get_db_connection()
     cur = conn.cursor()
 
     cur.execute("""
         SELECT 
             r.name AS region_name,
-            COUNT(*) AS flights,  -- считаем все рейсы, даже с битым временем
-            COALESCE(
-                SUM(
-                    CASE 
-                        WHEN f.arr_time > f.dep_time 
-                             AND f.arr_time IS NOT NULL 
-                             AND f.dep_time IS NOT NULL
-                        THEN EXTRACT(EPOCH FROM (f.arr_time - f.dep_time)) / 3600
-                        ELSE 0
-                    END
-                ), 
-            0) AS hours
+            COUNT(*) AS flights
         FROM flights f
         JOIN flights_regions fr ON f.sid = fr.fk_flight_id
         JOIN regions r ON fr.fk_region_id = r.gid
@@ -265,8 +254,48 @@ def flights_admin_regions_stats():
     for row in rows:
         result.append({
             "region": row[0],
-            "total_flights": row[1],
-            "total_hours": round(row[2], 1)
+            "total_flights": row[1]
+        })
+
+    return jsonify(result)
+
+
+@app.route("/flights/admin_regions_hours")
+def flights_admin_regions_hours():
+    """Статистика по часам - сортировка по количеству часов"""
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT 
+            r.name AS region_name,
+            COALESCE(
+                SUM(
+                    CASE 
+                        WHEN f.arr_time > f.dep_time 
+                             AND f.arr_time IS NOT NULL 
+                             AND f.dep_time IS NOT NULL
+                        THEN EXTRACT(EPOCH FROM (f.arr_time - f.dep_time)) / 3600
+                        ELSE 0
+                    END
+                ), 
+            0) AS hours
+        FROM flights f
+        JOIN flights_regions fr ON f.sid = fr.fk_flight_id
+        JOIN regions r ON fr.fk_region_id = r.gid
+        GROUP BY r.name
+        ORDER BY hours DESC;
+    """)
+
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    result = []
+    for row in rows:
+        result.append({
+            "region": row[0],
+            "total_hours": round(row[1], 1)
         })
 
     return jsonify(result)
@@ -287,7 +316,6 @@ def get_region_info(region_name):
         JOIN regions r ON fr.fk_region_id = r.gid
         WHERE r.name ILIKE %s OR r.name ILIKE %s
         ORDER BY f.dep_time DESC
-        LIMIT 100
     """, (f"%{full_region_name}%", f"%{region_name}%"))
     rows = cur.fetchall()
 
@@ -309,20 +337,131 @@ def get_region_info(region_name):
     })
 
 
+@app.route("/region/<region_name>/monthly_stats")
+def region_monthly_stats(region_name):
+    """
+    Статистика по полётам и часам для конкретного региона по месяцам
+
+    ИЗМЕНЕНИЯ:
+    - Количество полетов: учитываются ВСЕ полеты (включая с неизвестным временем)
+    - Часы полета: учитываются только полеты с валидным временем вылета и посадки
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    reverse_region_map = {v: k for k, v in region_map.items()}
+    full_region_name = reverse_region_map.get(region_name, region_name)
+
+    try:
+        # Модифицированный запрос: разделяем подсчет полетов и часов
+        cur.execute("""
+            SELECT 
+                TO_CHAR(f.dep_time, 'MM') as month,
+                TO_CHAR(f.dep_time, 'Month') as month_name,
+                COUNT(*) as all_flights,
+                COUNT(CASE 
+                    WHEN f.dep_time IS NOT NULL 
+                         AND f.arr_time IS NOT NULL 
+                         AND f.dep_time < f.arr_time 
+                    THEN 1 
+                END) as valid_time_flights,
+                COALESCE(
+                    SUM(CASE 
+                        WHEN f.dep_time IS NOT NULL 
+                             AND f.arr_time IS NOT NULL 
+                             AND f.dep_time < f.arr_time 
+                        THEN EXTRACT(EPOCH FROM (f.arr_time - f.dep_time))/3600 
+                    END), 
+                0) as hours
+            FROM flights f
+            JOIN flights_regions fr ON f.sid = fr.fk_flight_id
+            JOIN regions r ON fr.fk_region_id = r.gid
+            WHERE (r.name ILIKE %s OR r.name ILIKE %s)
+              AND f.dep_time IS NOT NULL  -- минимальное условие для группировки по месяцам
+            GROUP BY TO_CHAR(f.dep_time, 'MM'), TO_CHAR(f.dep_time, 'Month')
+            ORDER BY TO_CHAR(f.dep_time, 'MM')
+        """, (f"%{full_region_name}%", f"%{region_name}%"))
+
+        rows = cur.fetchall()
+
+        # Также получаем полеты без времени вылета (их нужно добавить к общему количеству)
+        cur.execute("""
+            SELECT COUNT(*) as flights_without_dep_time
+            FROM flights f
+            JOIN flights_regions fr ON f.sid = fr.fk_flight_id
+            JOIN regions r ON fr.fk_region_id = r.gid
+            WHERE (r.name ILIKE %s OR r.name ILIKE %s)
+              AND f.dep_time IS NULL
+        """, (f"%{full_region_name}%", f"%{region_name}%"))
+
+        flights_without_time = cur.fetchone()[0] or 0
+
+        cur.close()
+        conn.close()
+
+        # Создаём массивы для всех 12 месяцев
+        months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
+        month_names = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                       'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
+
+        # Инициализируем данные нулями
+        flights_by_month = [0] * 12
+        hours_by_month = [0] * 12
+
+        # Заполняем данные из запроса
+        total_flights_with_time = 0
+        total_valid_hours = 0
+        for month, month_name, all_flights, valid_time_flights, hours in rows:
+            month_index = int(month) - 1  # Преобразуем к индексу массива (0-11)
+            flights_by_month[month_index] = all_flights  # ВСЕ полеты с известным месяцем
+            hours_by_month[month_index] = round(hours, 1)  # Только часы с валидным временем
+            total_flights_with_time += all_flights
+            total_valid_hours += hours
+
+        # Добавляем полеты без времени вылета к общему количеству
+        total_all_flights = total_flights_with_time + flights_without_time
+
+        result = {
+            "months": month_names,
+            "flights": flights_by_month,  # ВСЕ полеты по месяцам
+            "hours": hours_by_month,  # Только релевантные часы по месяцам
+            "total_flights": total_all_flights,  # ВСЕ полеты включая без времени
+            "total_hours": round(total_valid_hours, 1),  # Только релевантные часы
+            "flights_without_time": flights_without_time,  # Полеты без времени (для отладки)
+            "coverage_info": {
+                "flights_with_time": total_flights_with_time,
+                "flights_with_valid_duration": sum([1 for hours in hours_by_month if hours > 0]),
+                "coverage_percent": round((total_flights_with_time / total_all_flights) * 100,
+                                          1) if total_all_flights > 0 else 0
+            }
+        }
+
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"Ошибка при получении месячной статистики для региона {region_name}: {e}")
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Ошибка получения данных"}), 500
+
+
 @app.route("/flights/top-uav-types")
 def top_uav_types():
+    """Глобальная статистика по топ 10 БВС"""
     conn = get_db_connection()
     cur = conn.cursor()
 
     try:
         cur.execute("""
-            SELECT 
-                COALESCE(NULLIF(TRIM(aircraft_type), ''), 'Не указан') as uav_type,
-                COUNT(*) as count
-            FROM flights
-            GROUP BY COALESCE(NULLIF(TRIM(aircraft_type), ''), 'Не указан')
-            ORDER BY count DESC
-            LIMIT 10
+        SELECT 
+            TRIM(aircraft_model) as uav_model,
+            COUNT(*) as count
+        FROM flights
+        WHERE TRIM(aircraft_model) IS NOT NULL
+          AND TRIM(aircraft_model) <> ''
+        GROUP BY TRIM(aircraft_model)
+        ORDER BY count DESC
+        LIMIT 10;
         """)
 
         rows = cur.fetchall()
@@ -335,6 +474,45 @@ def top_uav_types():
 
     except Exception as e:
         print(f"Ошибка при получении топ БВС: {e}")
+        cur.close()
+        conn.close()
+        return jsonify([]), 500
+
+
+@app.route("/region/<region_name>/top-uav-types")
+def region_top_uav_types(region_name):
+    """Статистика по топ 10 БВС для конкретного региона"""
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    reverse_region_map = {v: k for k, v in region_map.items()}
+    full_region_name = reverse_region_map.get(region_name, region_name)
+
+    try:
+        cur.execute("""
+        SELECT 
+            TRIM(f.aircraft_model) as uav_model,
+            COUNT(*) as count
+        FROM flights f
+        JOIN flights_regions fr ON f.sid = fr.fk_flight_id
+        JOIN regions r ON fr.fk_region_id = r.gid
+        WHERE (r.name ILIKE %s OR r.name ILIKE %s)
+          AND TRIM(f.aircraft_model) IS NOT NULL
+          AND TRIM(f.aircraft_model) <> ''
+        GROUP BY TRIM(f.aircraft_model)
+        ORDER BY count DESC
+        """, (f"%{full_region_name}%", f"%{region_name}%"))
+
+        rows = cur.fetchall()
+        result = [{"uav_type": row[0], "count": row[1]} for row in rows]
+
+        cur.close()
+        conn.close()
+
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"Ошибка при получении топ БВС для региона {region_name}: {e}")
         cur.close()
         conn.close()
         return jsonify([]), 500

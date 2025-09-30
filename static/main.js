@@ -149,6 +149,291 @@ document.addEventListener("DOMContentLoaded", () => {
         requestAnimationFrame(animation);
     }
 
+    // Генерация цветов для круговой диаграммы
+    function generatePieColors(count) {
+        const baseColors = [
+            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+            '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
+        ];
+
+        // Расширяем палитру если нужно больше цветов
+        const colors = [];
+        for (let i = 0; i < count; i++) {
+            if (i < baseColors.length) {
+                colors.push(baseColors[i]);
+            } else {
+                // Генерируем дополнительные цвета
+                const hue = (i * 137.508) % 360; // Золотое сечение для равномерного распределения
+                colors.push(`hsl(${hue}, 70%, 60%)`);
+            }
+        }
+        return colors;
+    }
+
+    // Создание диаграмм для региона
+    function createRegionCharts(statsData, uavData, containerElement) {
+        const chartsContainer = document.createElement("div");
+        chartsContainer.className = "region-charts-container";
+        chartsContainer.innerHTML = `
+            <div class="region-charts-grid">
+                <div class="region-chart-item">
+                    <h4 class="region-chart-title">Количество полётов по месяцам</h4>
+                    <div class="region-chart-wrapper">
+                        <canvas id="region-flights-chart"></canvas>
+                    </div>
+                </div>
+                <div class="region-chart-item">
+                    <h4 class="region-chart-title">Часы полётов по месяцам</h4>
+                    <div class="region-chart-wrapper">
+                        <canvas id="region-hours-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="region-stats-and-uav-container">
+                <div class="region-uav-chart-section">
+                    <h4 class="region-chart-title">Топ 10 БВС в регионе</h4>
+                    <div class="region-chart-wrapper region-pie-wrapper">
+                        <canvas id="region-uav-chart"></canvas>
+                    </div>
+                </div>
+                <div class="region-stats-summary">
+                    <div class="region-stat-card">
+                        <span class="region-stat-label">Всего полётов:</span>
+                        <span class="region-stat-value">${statsData.total_flights.toLocaleString()}</span>
+                    </div>
+                    <div class="region-stat-card">
+                        <span class="region-stat-label">Общий налёт:</span>
+                        <span class="region-stat-value">${statsData.total_hours} ч</span>
+                    </div>
+                    <div class="region-stat-card">
+                        <span class="region-stat-label">Типов БВС:</span>
+                        <span class="region-stat-value">${uavData.length}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        containerElement.appendChild(chartsContainer);
+
+        // Создание диаграммы полётов
+        setTimeout(() => {
+            const flightsCtx = document.getElementById("region-flights-chart");
+            if (flightsCtx) {
+                new Chart(flightsCtx.getContext("2d"), {
+                    type: "bar",
+                    data: {
+                        labels: statsData.months,
+                        datasets: [{
+                            label: "Количество полётов",
+                            data: statsData.flights,
+                            backgroundColor: "rgba(59, 130, 246, 1)",
+                            fill: true,
+                            tension: 0.4,
+                            pointBackgroundColor: "rgba(59, 130, 246, 1)",
+                            pointBorderColor: "#ffffff",
+                            pointBorderWidth: 2,
+                            pointRadius: 6,
+                            pointHoverRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: "rgba(255, 255, 255, 0.95)",
+                                titleColor: "#374151",
+                                bodyColor: "#6b7280",
+                                cornerRadius: 8,
+                                displayColors: false,
+                                callbacks: {
+                                    title: (ctx) => ctx[0].label,
+                                    label: (ctx) => `Полётов: ${ctx.raw.toLocaleString()}`
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: "#f3f4f6"
+                                },
+                                ticks: {
+                                    color: "#6b7280",
+                                    callback: value => value.toLocaleString()
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    color: "#6b7280"
+                                }
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        }
+                    }
+                });
+            }
+        }, 100);
+
+        // Создание диаграммы часов
+        setTimeout(() => {
+            const hoursCtx = document.getElementById("region-hours-chart");
+            if (hoursCtx) {
+                new Chart(hoursCtx.getContext("2d"), {
+                    type: "bar",
+                    data: {
+                        labels: statsData.months,
+                        datasets: [{
+                            label: "Часы полёта",
+                            data: statsData.hours,
+                            backgroundColor: "rgba(16, 185, 129, 0.8)",
+                            borderColor: "rgba(16, 185, 129, 1)",
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            borderSkipped: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: "rgba(255, 255, 255, 0.95)",
+                                titleColor: "#374151",
+                                bodyColor: "#6b7280",
+                                cornerRadius: 8,
+                                displayColors: false,
+                                callbacks: {
+                                    title: (ctx) => ctx[0].label,
+                                    label: (ctx) => `Часов: ${ctx.raw.toLocaleString()}`
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: "#f3f4f6"
+                                },
+                                ticks: {
+                                    color: "#6b7280",
+                                    callback: value => value.toLocaleString()
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    color: "#6b7280"
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }, 200);
+
+        // Создание круговой диаграммы БВС
+        setTimeout(() => {
+            const uavCtx = document.getElementById("region-uav-chart");
+            if (uavCtx && uavData.length > 0) {
+                const labels = uavData.map(item => item.uav_type);
+                const data = uavData.map(item => item.count);
+                const colors = generatePieColors(uavData.length);
+
+                new Chart(uavCtx.getContext("2d"), {
+                    type: "pie",
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: colors,
+                            borderColor: colors.map(color => color.replace(')', ', 0.8)').replace('rgb', 'rgba')),
+                            borderWidth: 2,
+                            hoverBorderWidth: 3,
+                            hoverBorderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'right',
+                                padding: 15, /* Уменьшен с 30 для компактности */
+                                labels: {
+                                    usePointStyle: true,
+                                    font: { size: 10 }, /* Уменьшен с 12 для экономии места */
+                                    padding: 8, /* Уменьшен с 15 для компактности */
+                                    generateLabels: function(chart) {
+                                        const data = chart.data.datasets[0].data;
+                                        const total = data.reduce((sum, val) => sum + val, 0);
+                                        return chart.data.labels.map((label, i) => ({
+                                            text: `${label} (${data[i]} - ${((data[i]/total)*100).toFixed(1)}%)`,
+                                            fillStyle: chart.data.datasets[0].backgroundColor[i],
+                                            strokeStyle: chart.data.datasets[0].backgroundColor[i],
+                                            index: i
+                                        }));
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: "rgba(255, 255, 255, 0.95)",
+                                titleColor: "#374151",
+                                bodyColor: "#6b7280",
+                                borderColor: "#e5e7eb",
+                                borderWidth: 1,
+                                cornerRadius: 8,
+                                displayColors: true,
+                                callbacks: {
+                                    title: (tooltipItems) => {
+                                        return tooltipItems[0].label;
+                                    },
+                                    label: (context) => {
+                                        const count = context.raw;
+                                        const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+                                        const percentage = ((count / total) * 100).toFixed(1);
+                                        return `Полётов: ${count.toLocaleString()} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        },
+                        animation: {
+                            animateRotate: true,
+                            animateScale: true,
+                            duration: 1000
+                        },
+                        interaction: {
+                            intersect: false
+                        }
+                    }
+                });
+            } else if (uavCtx) {
+                // Показываем сообщение, если нет данных о БВС
+                const noDataMsg = document.createElement("div");
+                noDataMsg.className = "no-uav-data";
+                noDataMsg.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #6b7280;">
+                        <p>📊 Нет данных о БВС для этого региона</p>
+                        <p style="font-size: 0.9em; margin-top: 10px;">Возможно, отсутствует информация о моделях воздушных судов</p>
+                    </div>
+                `;
+                uavCtx.parentElement.appendChild(noDataMsg);
+                uavCtx.style.display = 'none';
+            }
+        }, 300);
+    }
+
     fetch("/flights/stats")
         .then(res => res.json())
         .then(stats => {
@@ -196,44 +481,42 @@ document.addEventListener("DOMContentLoaded", () => {
         region.addEventListener("click", () => {
             const codeInDb = regionMap[title];
             regionTitle.textContent = title;
-            regionBody.innerHTML = "<p>Загрузка данных...</p>";
+            regionBody.innerHTML = `
+                <div class="loading-container">
+                    <div class="loading-spinner"></div>
+                    <p>Загрузка данных...</p>
+                </div>
+            `;
 
             panel.style.display = "flex";
             setTimeout(() => {
                 panel.classList.add("open");
             }, 10);
 
-            fetch(`/region/${codeInDb}`)
-                .then(res => res.json())
-                .then(data => {
-                    if (!data.drones || data.drones.length === 0) {
-                        regionBody.innerHTML = "<p>Нет данных о полётах дронов в этом регионе.</p>";
-                        return;
-                    }
+            // Параллельная загрузка данных о полётах, месячной статистики и БВС
+            Promise.all([
+                fetch(`/region/${codeInDb}`).then(res => res.json()),
+                fetch(`/region/${codeInDb}/monthly_stats`).then(res => res.json()),
+                fetch(`/region/${codeInDb}/top-uav-types`).then(res => res.json())
+            ])
+            .then(([flightsData, monthlyStats, uavData]) => {
+                regionBody.innerHTML = "";
 
-                    let html = `
-                        <p class="mb-4 font-semibold text-blue-700">
-                            Общее количество полётов: ${data.total_count.toLocaleString()}
-                        </p>
-                    `;
+                // Добавляем диаграммы (включая круговую диаграмму БВС)
+                if (monthlyStats && !monthlyStats.error) {
+                    createRegionCharts(monthlyStats, uavData || [], regionBody);
+                }
 
-                    const listItems = data.drones.map(d => `
-                        <li class="mb-3">
-                            <b>Время вылета:</b> ${d.dep_time || "—"}<br>
-                            <b>Время посадки:</b> ${d.arr_time || "—"}<br>
-                            <b>Координаты вылета:</b> ${d.dep_point || "—"}<br>
-                            <b>Координаты посадки:</b> ${d.arr_point || "—"}<br>
-                            <b>Оператор:</b> ${d.operator || "—"}<br>
-                            <b>Тип БВС:</b> ${d.aircraft_type || "—"}<br>
-                            <b>Модель БВС:</b> ${d.aircraft_model || "—"}<br>
-                            <b>Примечание:</b> ${d.remarks_raw || "—"}<br>
-                            <b>Телефоны:</b> ${d.phones || "—"}<br>
-                            <b>Район полетной информации:</b> ${d.source_center || "—"}
-                        </li>
-                    `).join("");
-
-                    regionBody.innerHTML = html + `<ul class="list-disc pl-4">${listItems}</ul>`;
-                })
+                // Примечание: список полётов убран по запросу пользователя
+            })
+            .catch(error => {
+                console.error("Ошибка загрузки данных региона:", error);
+                regionBody.innerHTML = `
+                    <div class="error-message">
+                        <p>Ошибка при загрузке данных региона. Попробуйте позже.</p>
+                    </div>
+                `;
+            });
         });
     });
 
@@ -293,205 +576,182 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
         `;
 
-        fetch("/flights/admin_regions_stats")
-            .then(res => res.json())
-            .then(regionStats => {
-                chartsContainer.innerHTML = "";
+        Promise.all([
+            fetch("/flights/admin_regions_flights").then(res => res.json()),
+            fetch("/flights/admin_regions_hours").then(res => res.json())
+        ])
+        .then(([flightsStats, hoursStats]) => {
+            chartsContainer.innerHTML = "";
 
-                const mainChartDiv = document.createElement("div");
-                mainChartDiv.className = "bg-white rounded-lg shadow-lg p-8";
+            const mainChartDiv = document.createElement("div");
+            mainChartDiv.className = "bg-white rounded-lg shadow-lg p-8";
 
-                const mainTitle = document.createElement("h3");
-                mainTitle.className = "text-2xl font-bold text-gray-800 mb-6 text-center";
-                mainTitle.textContent = "Статистика по регионам";
-                mainChartDiv.appendChild(mainTitle);
+            const mainTitle = document.createElement("h3");
+            mainTitle.className = "text-2xl font-bold text-gray-800 mb-6 text-center";
+            mainTitle.textContent = "Статистика по регионам";
+            mainChartDiv.appendChild(mainTitle);
 
-                const chartsGrid = document.createElement("div");
-                chartsGrid.className = "grid grid-cols-1 gap-8";
+            const chartsGrid = document.createElement("div");
+            chartsGrid.className = "grid grid-cols-1 gap-8";
 
-                // График полётов
-                const flightsSection = document.createElement("div");
-                flightsSection.className = "flex flex-col";
+            // --- СЕКЦИЯ ПОЛЁТОВ ---
+            const flightsSection = document.createElement("div");
+            flightsSection.className = "flex flex-col";
 
-                const flightsTitle = document.createElement("h4");
-                flightsTitle.className = "text-xl font-semibold text-blue-600 mb-4 text-center";
-                flightsTitle.textContent = "Полёты по регионам";
+            const flightsTitle = document.createElement("h4");
+            flightsTitle.className = "text-xl font-semibold text-blue-600 mb-4 text-center";
+            flightsTitle.textContent = "Полёты по регионам";
 
-                const flightsCanvas = document.createElement("canvas");
-                flightsCanvas.id = "flights-chart";
-                flightsCanvas.style.height = "1500px";
+            const flightsCanvas = document.createElement("canvas");
+            flightsCanvas.id = "flights-chart";
+            flightsCanvas.style.height = "1500px";
 
-                flightsSection.appendChild(flightsTitle);
-                flightsSection.appendChild(flightsCanvas);
+            flightsSection.appendChild(flightsTitle);
+            flightsSection.appendChild(flightsCanvas);
 
-                // График часов
-                const hoursSection = document.createElement("div");
-                hoursSection.className = "flex flex-col";
+            // --- СЕКЦИЯ ЧАСОВ ---
+            const hoursSection = document.createElement("div");
+            hoursSection.className = "flex flex-col";
 
-                const hoursTitle = document.createElement("h4");
-                hoursTitle.className = "text-xl font-semibold text-green-600 mb-4 text-center";
-                hoursTitle.textContent = "Часы полётов по регионам";
+            const hoursTitle = document.createElement("h4");
+            hoursTitle.className = "text-xl font-semibold text-green-600 mb-4 text-center";
+            hoursTitle.textContent = "Часы полётов по регионам";
 
-                const hoursCanvas = document.createElement("canvas");
-                hoursCanvas.id = "hours-chart";
-                hoursCanvas.style.height = "1500px";
+            const hoursCanvas = document.createElement("canvas");
+            hoursCanvas.id = "hours-chart";
+            hoursCanvas.style.height = "1500px";
 
-                hoursSection.appendChild(hoursTitle);
-                hoursSection.appendChild(hoursCanvas);
+            hoursSection.appendChild(hoursTitle);
+            hoursSection.appendChild(hoursCanvas);
 
-                chartsGrid.appendChild(flightsSection);
-                chartsGrid.appendChild(hoursSection);
-                mainChartDiv.appendChild(chartsGrid);
-                chartsContainer.appendChild(mainChartDiv);
+            chartsGrid.appendChild(flightsSection);
+            chartsGrid.appendChild(hoursSection);
+            mainChartDiv.appendChild(chartsGrid);
+            chartsContainer.appendChild(mainChartDiv);
 
-                // Подготавливаем данные
-                const sortedData = regionStats.sort((a, b) => b.total_flights - a.total_flights);
-                const sortedNames = sortedData.map(d => d.region);
-                const sortedFlights = sortedData.map(d => d.total_flights);
-                const sortedHours = sortedData.map(d => d.total_hours);
+            // --- ПОДГОТОВКА ДАННЫХ ---
+            // Полёты
+            const sortedFlightsData = flightsStats.sort((a, b) => b.total_flights - a.total_flights);
+            const flightsNames = sortedFlightsData.map(d => d.region);
+            const flightsCounts = sortedFlightsData.map(d => d.total_flights);
 
-                // Анимация появления
+            // Часы
+            const sortedHoursData = hoursStats.sort((a, b) => b.total_hours - a.total_hours);
+            const hoursNames = sortedHoursData.map(d => d.region);
+            const hoursCounts = sortedHoursData.map(d => d.total_hours);
+
+            // --- Анимация появления ---
+            setTimeout(() => {
+                mainChartDiv.style.opacity = "0";
+                mainChartDiv.style.transform = "translateY(20px)";
+                mainChartDiv.style.transition = "all 0.6s ease";
+
                 setTimeout(() => {
-                    mainChartDiv.style.opacity = "0";
-                    mainChartDiv.style.transform = "translateY(20px)";
-                    mainChartDiv.style.transition = "all 0.6s ease";
+                    mainChartDiv.style.opacity = "1";
+                    mainChartDiv.style.transform = "translateY(0)";
+                }, 50);
+            }, 100);
 
-                    setTimeout(() => {
-                        mainChartDiv.style.opacity = "1";
-                        mainChartDiv.style.transform = "translateY(0)";
-                    }, 50);
-                }, 100);
-
-                // Создаем диаграммы
-                setTimeout(() => {
-                    // График полётов
-                    new Chart(flightsCanvas.getContext("2d"), {
-                        type: "bar",
-                        data: {
-                            labels: sortedNames,
-                            datasets: [{
-                                label: "Количество полётов",
-                                data: sortedFlights,
-                                backgroundColor: "#3b82f6",
-                                borderColor: "#1e40af",
-                                borderWidth: 1,
-                                borderRadius: 4
-                            }]
-                        },
-                        options: {
-                            indexAxis: 'y',
-                            responsive: true,
-                            maintainAspectRatio: true,
-                            barThickness: 10,
-                            plugins: {
-                                legend: {
-                                    display: false
-                                },
-                                tooltip: {
-                                    callbacks: {
-                                        title: function(context) {
-                                            return context[0].label;
-                                        },
-                                        label: function(context) {
-                                            const regionName = context.label;
-                                            const dataIndex = sortedNames.indexOf(regionName);
-                                            const exactValue = sortedFlights[dataIndex];
-                                            return `Полётов: ${exactValue.toLocaleString()}`;
-                                        }
-                                    }
-                                }
-                            },
-                            scales: {
-                                x: {
-                                    type: 'logarithmic',
-                                    min: 1,
-                                    ticks: {
-                                        callback: function(value) {
-                                            return value.toLocaleString();
-                                        }
-                                    }
-                                },
-                                y: {
-                                    ticks: {
-                                        font: {
-                                            size: 10
-                                        }
-                                    }
+            // --- СОЗДАНИЕ ДИАГРАММ ---
+            setTimeout(() => {
+                // Диаграмма полётов
+                new Chart(flightsCanvas.getContext("2d"), {
+                    type: "bar",
+                    data: {
+                        labels: flightsNames,
+                        datasets: [{
+                            label: "Количество полётов",
+                            data: flightsCounts,
+                            backgroundColor: "#3b82f6",
+                            borderColor: "#1e40af",
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        barThickness: 10,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    title: ctx => ctx[0].label,
+                                    label: ctx => `Полётов: ${ctx.raw.toLocaleString()}`
                                 }
                             }
-                        }
-                    });
-
-                    // График часов
-                    new Chart(hoursCanvas.getContext("2d"), {
-                        type: "bar",
-                        data: {
-                            labels: sortedNames,
-                            datasets: [{
-                                label: "Часы полёта",
-                                data: sortedHours,
-                                backgroundColor: "#10b981",
-                                borderColor: "#065f46",
-                                borderWidth: 1,
-                                borderRadius: 4
-                            }]
                         },
-                        options: {
-                            indexAxis: 'y',
-                            responsive: true,
-                            maintainAspectRatio: true,
-                            barThickness: 10,
-                            plugins: {
-                                legend: {
-                                    display: false
-                                },
-                                tooltip: {
-                                    callbacks: {
-                                        title: function(context) {
-                                            return context[0].label;
-                                        },
-                                        label: function(context) {
-                                            const regionName = context.label;
-                                            const dataIndex = sortedNames.indexOf(regionName);
-                                            const exactValue = sortedHours[dataIndex];
-                                            return `Часов: ${exactValue.toLocaleString()}`;
-                                        }
-                                    }
+                        scales: {
+                            x: {
+                                type: 'logarithmic',
+                                min: 1,
+                                ticks: {
+                                    callback: value => value.toLocaleString()
                                 }
                             },
-                            scales: {
-                                x: {
-                                    type: 'logarithmic',
-                                    min: 0.1,
-                                    ticks: {
-                                        callback: function(value) {
-                                            return value.toLocaleString();
-                                        }
-                                    }
-                                },
-                                y: {
-                                    ticks: {
-                                        font: {
-                                            size: 10
-                                        }
-                                    }
-                                }
+                            y: {
+                                ticks: { font: { size: 10 } }
                             }
                         }
-                    });
-                }, 400);
-            })
-            .catch(err => {
-                console.error("Ошибка загрузки диаграмм:", err);
-                chartsContainer.innerHTML = `
-                    <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-                        <p class="text-red-600">Ошибка при загрузке статистики по регионам</p>
-                        <button onclick="location.reload()" class="mt-2 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
-                            Попробовать снова
-                        </button>
-                    </div>
-                `;
-            });
+                    }
+                });
+
+                // Диаграмма часов
+                new Chart(hoursCanvas.getContext("2d"), {
+                    type: "bar",
+                    data: {
+                        labels: hoursNames,
+                        datasets: [{
+                            label: "Часы полёта",
+                            data: hoursCounts,
+                            backgroundColor: "#10b981",
+                            borderColor: "#065f46",
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        barThickness: 10,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    title: ctx => ctx[0].label,
+                                    label: ctx => `Часов: ${ctx.raw.toLocaleString()}`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'logarithmic',
+                                min: 0.1,
+                                ticks: {
+                                    callback: value => value.toLocaleString()
+                                }
+                            },
+                            y: {
+                                ticks: { font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+            }, 400);
+        })
+        .catch(err => {
+            console.error("Ошибка загрузки диаграмм:", err);
+            chartsContainer.innerHTML = `
+                <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                    <p class="text-red-600">Ошибка при загрузке статистики по регионам</p>
+                    <button onclick="location.reload()" class="mt-2 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+                        Попробовать снова
+                    </button>
+                </div>
+            `;
+        });
     }
 
     closeBtn.addEventListener("click", () => {
