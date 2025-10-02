@@ -199,7 +199,6 @@ def flights_stats():
 
 @app.route("/flights/regions_stats")
 def flights_regions_stats():
-    """Статистика по РПИ (районам полетной информации)"""
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -236,7 +235,6 @@ def flights_regions_stats():
 
 @app.route("/flights/admin_regions_flights")
 def flights_admin_regions_flights():
-    """Статистика по полётам - сортировка по количеству полётов"""
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -267,7 +265,6 @@ def flights_admin_regions_flights():
 
 @app.route("/flights/admin_regions_hours")
 def flights_admin_regions_hours():
-    """Статистика по часам - сортировка по количеству часов"""
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -344,13 +341,6 @@ def get_region_info(region_name):
 
 @app.route("/region/<region_name>/monthly_stats")
 def region_monthly_stats(region_name):
-    """
-    Статистика по полётам и часам для конкретного региона по месяцам
-
-    ИЗМЕНЕНИЯ:
-    - Количество полетов: учитываются ВСЕ полеты (включая с неизвестным временем)
-    - Часы полета: учитываются только полеты с валидным временем вылета и посадки
-    """
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -389,7 +379,6 @@ def region_monthly_stats(region_name):
 
         rows = cur.fetchall()
 
-        # Также получаем полеты без времени вылета (их нужно добавить к общему количеству)
         cur.execute("""
             SELECT COUNT(*) as flights_without_dep_time
             FROM flights f
@@ -404,7 +393,6 @@ def region_monthly_stats(region_name):
         cur.close()
         conn.close()
 
-        # Создаём массивы для всех 12 месяцев
         months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12']
         month_names = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
                        'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
@@ -452,7 +440,6 @@ def region_monthly_stats(region_name):
 
 @app.route("/flights/top-uav-types")
 def top_uav_types():
-    """Глобальная статистика по топ 10 БВС"""
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -486,7 +473,6 @@ def top_uav_types():
 
 @app.route("/region/<region_name>/top-uav-types")
 def region_top_uav_types(region_name):
-    """Статистика по топ 10 БВС для конкретного региона"""
     conn = get_db_connection()
     cur = conn.cursor()
 

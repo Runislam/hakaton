@@ -156,7 +156,6 @@ document.addEventListener("DOMContentLoaded", () => {
         requestAnimationFrame(animation);
     }
 
-    // Генерация цветов для круговой диаграммы
     function generatePieColors(count) {
         const baseColors = [
             '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
@@ -166,16 +165,16 @@ document.addEventListener("DOMContentLoaded", () => {
             '#D35400', '#7F8C8D', '#BDC3C7', '#F1C40F', '#E8DAEF'
         ];
 
-        // Расширяем палитру если нужно больше цветов
+        // Расширяем палитру
         const colors = [];
         for (let i = 0; i < count; i++) {
             if (i < baseColors.length) {
                 colors.push(baseColors[i]);
             } else {
                 // Генерируем дополнительные цвета с вариацией насыщенности и яркости
-                const hue = (i * 137.508) % 360; // Золотое сечение
-                const saturation = 60 + (i % 3) * 10; // Варьируем 60-80%
-                const lightness = 50 + (i % 4) * 5; // Варьируем 50-65%
+                const hue = (i * 137.508) % 360;
+                const saturation = 60 + (i % 3) * 10;
+                const lightness = 50 + (i % 4) * 5;
                 colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
             }
         }
@@ -379,7 +378,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     options: {
                         responsive: true,
                         maintainAspectRatio: true,
-                        cutout: '60%',  // Добавлено - определяет размер отверстия (60% от радиуса)
+                        cutout: '60%',
                         plugins: {
                             legend: {
                                 display: true,
@@ -604,12 +603,11 @@ document.addEventListener("DOMContentLoaded", () => {
             .then(([flightsData, monthlyStats, uavData]) => {
                 regionBody.innerHTML = "";
 
-                // Добавляем диаграммы (включая круговую диаграмму БВС)
+                // Добавляем диаграммы
                 if (monthlyStats && !monthlyStats.error) {
                     createRegionCharts(monthlyStats, uavData || [], regionBody);
                 }
 
-                // Примечание: список полётов убран по запросу пользователя
             })
             .catch(error => {
                 console.error("Ошибка загрузки данных региона:", error);
