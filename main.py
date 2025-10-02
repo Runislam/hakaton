@@ -558,8 +558,9 @@ def upload_excel():
     print(f"[INFO] Файл сохранён: {filepath}")
 
     try:
+        # Запуск обработки
         full_parser.main_from_file(filepath)
-        return "Файл успешно обработан!"
+        return "Файл обработан успешно!"
     except Exception as e:
         import traceback
         traceback.print_exc()

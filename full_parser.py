@@ -1,13 +1,3 @@
-
-# -*- coding: utf-8 -*-
-"""
-import_from_excel.py
-
-Берёт Excel (по аргументу или первый найденный в папке), разбирает строки
-по логике ShrDepArrParser (перенос с Java) и сразу вставляет записи в Postgres/PostGIS.
-
-Настройки БД можно изменить в DB_CONFIG.
-"""
 import re
 import sys
 import glob
@@ -37,7 +27,7 @@ MODEL_NORMALIZATION = {
     "DJIMATRICE300": "DJI MATRICE 300",
     "DJIMATRICE30T": "DJI MATRICE 30T"
 }
-#Нормализация модели бпла
+
 def normalize_model(model: str) -> str:
     if not model:
         return model
@@ -51,7 +41,7 @@ def parse_record(row):
     arr = str(row["arr"] or "")
     return ShrDepArrParser.parse(center, shr, dep, arr)
 
-# ---------------- Парсинг одного чанка ----------------
+
 def parse_chunk(chunk):
     return [parse_record(r) for _, r in chunk.iterrows()]
 
@@ -61,24 +51,24 @@ def parse_coords(coord_str):
         return None
 
     coord_str = str(coord_str).strip()
-    # Заменяем русские буквы на английские
+
     coord_str = (coord_str
                 .replace('С', 'N')  # Север - North
                 .replace('Ю', 'S')  # Юг - South
                 .replace('В', 'E')  # Восток - East
                 .replace('З', 'W')) # Запад - West
 
-    # формат DDMMSSNDDDMMSS
+
     m = re.match(r"^(\d{2})(\d{2})(\d{2})([NS])(\d{3})(\d{2})(\d{2})([EW])$", coord_str)
     if m:
         lat_deg, lat_min, lat_sec, lat_hem, lon_deg, lon_min, lon_sec, lon_hem = m.groups()
         lat = int(lat_deg) + int(lat_min) / 60 + int(lat_sec) / 3600
         lon = int(lon_deg) + int(lon_min) / 60 + int(lon_sec) / 3600
     else:
-        # формат DDMMNDDDMME
+
         m = re.match(r"^(\d{2})(\d{2})([NS])(\d{3})(\d{2})([EW])$", coord_str)
         if not m:
-            # не смогли распознать
+
             print(f"Не удалось распознать координаты: {coord_str}")
             return None
         lat_deg, lat_min, lat_hem, lon_deg, lon_min, lon_hem = m.groups()
@@ -90,7 +80,7 @@ def parse_coords(coord_str):
     if lon_hem == "W":
         lon = -lon
 
-    return lon, lat  # PostGIS ждет (lon, lat)
+    return lon, lat
 
 
 def parse_datetime(date_str, time_str):
@@ -111,7 +101,7 @@ def haversine(lon1, lat1, lon2, lat2):
     return 2 * R * asin(sqrt(a))
 
 
-# ---------------- Перенос ShrDepArrParser (Java -> Python) ----------------
+
 
 class ShrDepArrParser:
     @staticmethod
@@ -170,31 +160,31 @@ class ShrDepArrParser:
             if rawRemarks:
                 ShrDepArrParser._parse_remarks(rawRemarks, r)
 
-        # --- DEP ---
+
         if depN and depN.strip():
             r["sid"] = ShrDepArrParser._match(r"SID\s+(\d+)", depN, r["sid"])
             r["date"] = ShrDepArrParser._match(r"ADD\s+(\d{6})", depN, r["date"])
             r["departureTime"] = ShrDepArrParser._match(r"ATD\s+(\d{4})", depN, r["departureTime"])
             r["departureCoords"] = ShrDepArrParser._match(r"ADEPZ\s+(\S+)", depN, r["departureCoords"])
 
-        # --- ARR ---
+
         if arrN and arrN.strip():
             r["sid"] = ShrDepArrParser._match(r"SID\s+(\d+)", arrN, r["sid"])
             r["date"] = ShrDepArrParser._match(r"ADA\s+(\d{6})", arrN, r["date"])
             r["arrivalTime"] = ShrDepArrParser._match(r"ATA\s+(\d{4})", arrN, r["arrivalTime"])
             r["arrivalCoords"] = ShrDepArrParser._match(r"ADARRZ\s+(\S+)", arrN, r["arrivalCoords"])
 
-        # 2) Рег-номера — со всех raw
+
         ShrDepArrParser._extract_reg_numbers(shrRaw, r)
         ShrDepArrParser._extract_reg_numbers(depRaw, r)
         ShrDepArrParser._extract_reg_numbers(arrRaw, r)
 
-        # 3) Модель БВС — ищем по всему raw
+
         ShrDepArrParser._extract_aircraft_model(shrRaw + " " + depRaw + " " + arrRaw, r)
 
         return r
 
-    # ---------------- helpers ----------------
+
 
     @staticmethod
     def _match(regex, text, current):
@@ -288,18 +278,18 @@ class ShrDepArrParser:
             tail = re.sub(r"\s+", " ", tail).strip()
 
             found = False
-            # кириллица ФИО
+
             fio_cyr = re.compile(r"([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ][а-яё]+){0,2})")
             for fm in fio_cyr.finditer(tail):
                 r["operator"] = ShrDepArrParser._merge_semi(r.get("operator"), fm.group(1).strip())
                 found = True
 
-            # латиница
+
             fio_lat = re.compile(r"([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}|[A-Z]{2,}(?:\s+[A-Z]{2,}){0,2})")
             for fm in fio_lat.finditer(tail):
                 r["operator"] = ShrDepArrParser._merge_semi(r.get("operator"), fm.group(1).strip())
                 found = True
-            # если ничего не найдено — не засоряем remarksRaw
+
 
     @staticmethod
     def _extract_reg_numbers(raw, r):
@@ -381,7 +371,7 @@ class ShrDepArrParser:
         if re.fullmatch(r"[A-ZА-ЯЁ]\d{4,}[A-ZА-ЯЁ]?", s): return True
         if re.fullmatch(r"\d{3,}[A-ZА-ЯЁ]{1,2}", s): return True
 
-        # fallback: смешанный набор с буквой и цифрой
+
         if 6 <= len(s) <= 8 and re.fullmatch(r"[A-ZА-ЯЁ0-9\-]+", s) and re.search(r"[A-ZА-ЯЁ]", s) and re.search(r"\d", s):
             return True
 
@@ -473,7 +463,7 @@ class ShrDepArrParser:
 
 
 
-# ---------------- Main: вставка в БД (логика сохранена) ----------------
+
 
 def find_first_excel_file():
     for ext in ("*.xlsx", "*.xls", "*.xlsm"):
@@ -505,7 +495,7 @@ def main():
     start_time = time.time()
     print("Начало обработки данных")
 
-    # === Получаем входной файл ===
+
     if len(sys.argv) > 1:
         excel_path = sys.argv[1]
     else:
@@ -518,7 +508,7 @@ def main():
     records = parse_excel_file(excel_path, limit=80000)
     print(f"Найдено записей (ограничение): {len(records)})")
 
-    # === Подключаемся к БД ===
+
     conn = psycopg2.connect(**DB_CONFIG)
     cur = conn.cursor()
 
@@ -582,7 +572,7 @@ def main():
         middle_time1 = time.time()
         print(f"Данные о полетах вставлены, определяем регионы, время: {middle_time1 - start_time:.2f} секунд")
 
-        # Временная таблица
+
         cur.execute("""
             CREATE TEMP TABLE flights_tmp (
                 sid TEXT,
@@ -592,7 +582,7 @@ def main():
         """)
         execute_values(cur, "INSERT INTO flights_tmp (sid, dep_geom, arr_geom) VALUES %s", tmp_rows, page_size=1000)
 
-        # Вставка в flights_regions
+
         cur.execute("""
             INSERT INTO flights_regions (fk_flight_id, fk_region_id, role)
             SELECT f.sid, r1.gid, 'both'
@@ -631,7 +621,7 @@ def main():
     print(f"Общее время выполнения: {end_time - start_time:.2f} секунд")
 
 def main_from_file(excel_path):
-    """Обработать конкретный файл, без sys.argv"""
+
     records = parse_excel_file(excel_path)
     conn = psycopg2.connect(**DB_CONFIG)
     cur = conn.cursor()

@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 import os
 from werkzeug.utils import secure_filename
-import full_parser  # твой скрипт
+import full_parser
 import traceback
 UPLOAD_FOLDER = "uploads"
 ALLOWED_EXTENSIONS = {"xlsx", "xls"}
@@ -34,11 +34,11 @@ def admin_panel():
             try:
                 print(f"[INFO] Файл сохранен: {filepath}")
 
-                # Запуск парсера
+
                 records = full_parser.parse_excel_file(filepath)
                 print(f"[INFO] Распарсено записей: {len(records)}")
 
-                # Вставка в БД
+
                 full_parser.main_from_file(filepath)
                 print("[INFO] Данные успешно вставлены в БД")
 
