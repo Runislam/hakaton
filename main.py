@@ -1,13 +1,19 @@
+import os
+
 from flask import Flask, jsonify, render_template
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from flask import Flask, render_template, redirect, url_for, session
 import psycopg2
+from werkzeug.utils import secure_filename
+
 from auth import auth_bp
 import pandas as pd
 from flask import request
 from datetime import datetime
 from config import *
+from hakaton import full_parser
+
 app = Flask(__name__)
 app.config.from_pyfile('config.py')
 app = Flask(__name__)
@@ -541,24 +547,23 @@ def upload_excel():
     if not file:
         return "Файл не выбран", 400
 
+    filename = file.filename
+    if not (filename.endswith(".xlsx") or filename.endswith(".xls")):
+        return "Неверный формат файла. Разрешено только .xlsx и .xls", 400
+
+    upload_folder = "uploads"
+    os.makedirs(upload_folder, exist_ok=True)
+    filepath = os.path.join(upload_folder, secure_filename(filename))
+    file.save(filepath)
+    print(f"[INFO] Файл сохранён: {filepath}")
+
     try:
-        df = pd.read_excel(file)
-        # тут можешь обработать Excel
-        # пример: вывести первые строки
-        print(df.head())
-
-        # например, можно записывать данные в таблицу flights:
-        # conn = get_db_connection()
-        # cur = conn.cursor()
-        # for _, row in df.iterrows():
-        #     cur.execute("INSERT INTO flights (col1, col2) VALUES (%s, %s)", (row["col1"], row["col2"]))
-        # conn.commit()
-        # cur.close()
-        # conn.close()
-
-        return "Файл успешно загружен и обработан!"
+        full_parser.main_from_file(filepath)
+        return "Файл успешно обработан!"
     except Exception as e:
-        return f"Ошибка при обработке: {e}", 500
+        import traceback
+        traceback.print_exc()
+        return f"Ошибка при обработке: {str(e)}", 500
 
 if __name__ == "__main__":
     app.run(debug=True)
