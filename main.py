@@ -543,8 +543,6 @@ def upload_excel():
 
     try:
         df = pd.read_excel(file)
-        # тут можешь обработать Excel
-        # пример: вывести первые строки
         print(df.head())
 
         # например, можно записывать данные в таблицу flights:
