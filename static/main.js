@@ -3,90 +3,97 @@ document.addEventListener("DOMContentLoaded", () => {
     const regions = map.querySelectorAll("[data-code]");
 
     const regionMap = {
-        "Московская область": "RUMOW",
-        "Москва": "RUMOS",
-        "Санкт-Петербург": "RUSPE",
-        "Ленинградская область": "RULEN",
-        "Республика Коми": "RUKO",
-        "Республика Татарстан": "RUTA",
-        "Республика Башкортостан": "RUBA",
-        "Республика Саха (Якутия)": "RUSA",
-        "Краснодарский край": "RUKDA",
-        "Красноярский край": "RUKYA",
-        "Ставропольский край": "RUSTA",
-        "Приморский край": "RUPRI",
-        "Хабаровский край": "RUKHA",
-        "Амурская область": "RUAMU",
-        "Архангельская область": "RUARK",
-        "Астраханская область": "RUAST",
-        "Белгородская область": "RUBEL",
-        "Брянская область": "RUBRY",
-        "Владимирская область": "RUVLA",
-        "Волгоградская область": "RUVGG",
-        "Вологодская область": "RUVLG",
-        "Воронежская область": "RUVOR",
-        "Ивановская область": "RUIVA",
-        "Иркутская область": "RUIRK",
-        "Калининградская область": "RUKGD",
-        "Калужская область": "RUKLU",
-        "Камчатский край": "RUKAM",
-        "Кемеровская область": "RUKEM",
-        "Кировская область": "RUKIR",
-        "Костромская область": "RUKOS",
-        "Курганская область": "RUKGN",
-        "Курская область": "RUKRS",
-        "Липецкая область": "RULIP",
-        "Магаданская область": "RUMAG",
-        "Мурманская область": "RUMUR",
-        "Нижегородская область": "RUNIZ",
-        "Новгородская область": "RUNGR",
-        "Новосибирская область": "RUNVS",
-        "Омская область": "RUOMS",
-        "Оренбургская область": "RUORE",
-        "Орловская область": "RUORL",
-        "Пензенская область": "RUPNZ",
-        "Пермский край": "RUPER",
-        "Псковская область": "RUPSK",
-        "Ростовская область": "RUROS",
-        "Рязанская область": "RURYA",
-        "Самарская область": "RUSAM",
-        "Саратовская область": "RUSAR",
-        "Сахалинская область": "RUSAK",
-        "Свердловская область": "RUSVE",
-        "Смоленская область": "RUSMO",
-        "Тамбовская область": "RUTAM",
-        "Тверская область": "RUTVE",
-        "Томская область": "RUTOM",
-        "Тульская область": "RUTUL",
-        "Тюменская область": "RUTYU",
-        "Ульяновская область": "RUULY",
-        "Челябинская область": "RUCHE",
-        "Забайкальский край": "RUZAB",
-        "Ярославская область": "RUYAR",
-        "Республика Алтай": "RUAL",
-        "Республика Бурятия": "RUBU",
-        "Республика Дагестан": "RUDA",
-        "Республика Ингушетия": "RUIN",
-        "Республика Калмыкия": "RUKL",
-        "Карачаево-Черкесская Республика": "RUKC",
-        "Республика Карелия": "RUKR",
-        "Кабардино-Балкарская Республика": "RUKB",
-        "Республика Мордовия": "RUMO",
-        "Республика Северная Осетия — Алания": "RUSE",
-        "Республика Тыва": "RUTY",
-        "Республика Хакасия": "RUKK",
-        "Республика Крым": "RUCR",
-        "Республика Адыгея": "RUAD",
-        "Чеченская Республика": "RUCE",
-        "Чувашская Республика": "RUCU",
-        "Удмуртская Республика": "RUUD",
-        "Республика Марий Эл": "RUME",
-        "Еврейская автономная область": "RUYEV",
-        "Ненецкий автономный округ": "RUNEN",
-        "Ханты-Мансийский автономный округ — Югра": "RUKHM",
-        "Ямало-Ненецкий автономный округ": "RUYAN",
-        "Чукотский автономный округ": "RUCHU"
-    };
+    "Московская область": "RUMOW",
+    "Москва": "RUMOS",
+    "Санкт-Петербург": "RUSPE",
+    "Ленинградская область": "RULEN",
+    "Республика Коми": "RUKO",
+    "Республика Татарстан": "RUTA",
+    "Республика Башкортостан": "RUBA",
+    "Республика Саха (Якутия)": "RUSA",
+    "Краснодарский край": "RUKDA",
+    "Красноярский край": "RUKYA",
+    "Ставропольский край": "RUSTA",
+    "Приморский край": "RUPRI",
+    "Хабаровский край": "RUKHA",
+    "Амурская область": "RUAMU",
+    "Архангельская область": "RUARK",
+    "Астраханская область": "RUAST",
+    "Белгородская область": "RUBEL",
+    "Брянская область": "RUBRY",
+    "Владимирская область": "RUVLA",
+    "Волгоградская область": "RUVGG",
+    "Вологодская область": "RUVLG",
+    "Воронежская область": "RUVOR",
+    "Ивановская область": "RUIVA",
+    "Иркутская область": "RUIRK",
+    "Калининградская область": "RUKGD",
+    "Калужская область": "RUKLU",
+    "Камчатский край": "RUKAM",
+    "Кемеровская область": "RUKEM",
+    "Кировская область": "RUKIR",
+    "Костромская область": "RUKOS",
+    "Курганская область": "RUKGN",
+    "Курская область": "RUKRS",
+    "Липецкая область": "RULIP",
+    "Магаданская область": "RUMAG",
+    "Мурманская область": "RUMUR",
+    "Нижегородская область": "RUNIZ",
+    "Новгородская область": "RUNGR",
+    "Новосибирская область": "RUNVS",
+    "Омская область": "RUOMS",
+    "Оренбургская область": "RUORE",
+    "Орловская область": "RUORL",
+    "Пензенская область": "RUPNZ",
+    "Пермский край": "RUPER",
+    "Псковская область": "RUPSK",
+    "Ростовская область": "RUROS",
+    "Рязанская область": "RURYA",
+    "Самарская область": "RUSAM",
+    "Саратовская область": "RUSAR",
+    "Сахалинская область": "RUSAK",
+    "Свердловская область": "RUSVE",
+    "Смоленская область": "RUSMO",
+    "Тамбовская область": "RUTAM",
+    "Тверская область": "RUTVE",
+    "Томская область": "RUTOM",
+    "Тульская область": "RUTUL",
+    "Тюменская область": "RUTYU",
+    "Ульяновская область": "RUULY",
+    "Челябинская область": "RUCHE",
+    "Забайкальский край": "RUZAB",
+    "Ярославская область": "RUYAR",
+    "Республика Алтай": "RUAL",
+    "Республика Бурятия": "RUBU",
+    "Республика Дагестан": "RUDA",
+    "Республика Ингушетия": "RUIN",
+    "Республика Калмыкия": "RUKL",
+    "Карачаево-Черкесская Республика": "RUKC",
+    "Республика Карелия": "RUKR",
+    "Кабардино-Балкарская Республика": "RUKB",
+    "Республика Мордовия": "RUMO",
+    "Республика Северная Осетия — Алания": "RUSE",
+    "Республика Тыва": "RUTY",
+    "Республика Хакасия": "RUKK",
+    "Республика Крым": "RUCR",
+    "Республика Адыгея": "RUAD",
+    "Чеченская Республика": "RUCE",
+    "Чувашская Республика": "RUCU",
+    "Удмуртская Республика": "RUUD",
+    "Республика Марий Эл": "RUME",
+    "Еврейская автономная область": "RUYEV",
+    "Ненецкий автономный округ": "RUNEN",
+    "Ханты-Мансийский автономный округ — Югра": "RUKHM",
+    "Ямало-Ненецкий автономный округ": "RUYAN",
+    "Чукотский автономный округ": "RUCHU",
+    "Запорожская область": "RUZP",
+    "Алтайский край": "RUALT",
+    "Донецкая Народная Республика": "RUDON",
+    "Луганская Народная Республика": "RULUG",
+    "Херсонская область": "RUHR",
+    "Севастополь": "RUSV"
+};
+
 
     const panel = document.createElement("div");
     panel.className = "region-modal";
@@ -153,7 +160,10 @@ document.addEventListener("DOMContentLoaded", () => {
     function generatePieColors(count) {
         const baseColors = [
             '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-            '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
+            '#FF9F40', '#E74C3C', '#3498DB', '#2ECC71', '#F39C12',
+            '#9B59B6', '#1ABC9C', '#E67E22', '#95A5A6', '#34495E',
+            '#16A085', '#27AE60', '#2980B9', '#8E44AD', '#C0392B',
+            '#D35400', '#7F8C8D', '#BDC3C7', '#F1C40F', '#E8DAEF'
         ];
 
         // Расширяем палитру если нужно больше цветов
@@ -162,9 +172,11 @@ document.addEventListener("DOMContentLoaded", () => {
             if (i < baseColors.length) {
                 colors.push(baseColors[i]);
             } else {
-                // Генерируем дополнительные цвета
-                const hue = (i * 137.508) % 360; // Золотое сечение для равномерного распределения
-                colors.push(`hsl(${hue}, 70%, 60%)`);
+                // Генерируем дополнительные цвета с вариацией насыщенности и яркости
+                const hue = (i * 137.508) % 360; // Золотое сечение
+                const saturation = 60 + (i % 3) * 10; // Варьируем 60-80%
+                const lightness = 50 + (i % 4) * 5; // Варьируем 50-65%
+                colors.push(`hsl(${hue}, ${saturation}%, ${lightness}%)`);
             }
         }
         return colors;
@@ -351,30 +363,32 @@ document.addEventListener("DOMContentLoaded", () => {
                 const colors = generatePieColors(uavData.length);
 
                 new Chart(uavCtx.getContext("2d"), {
-                    type: "pie",
+                    type: "doughnut",
                     data: {
                         labels: labels,
                         datasets: [{
                             data: data,
                             backgroundColor: colors,
-                            borderColor: colors.map(color => color.replace(')', ', 0.8)').replace('rgb', 'rgba')),
+                            borderColor: '#ffffff',
                             borderWidth: 2,
                             hoverBorderWidth: 3,
-                            hoverBorderColor: '#ffffff'
+                            hoverBorderColor: '#ffffff',
+                            hoverOffset: 8
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: true,
+                        cutout: '60%',  // Добавлено - определяет размер отверстия (60% от радиуса)
                         plugins: {
                             legend: {
                                 display: true,
                                 position: 'right',
-                                padding: 15, /* Уменьшен с 30 для компактности */
+                                padding: 15,
                                 labels: {
                                     usePointStyle: true,
-                                    font: { size: 10 }, /* Уменьшен с 12 для экономии места */
-                                    padding: 8, /* Уменьшен с 15 для компактности */
+                                    font: { size: 10 },
+                                    padding: 8,
                                     generateLabels: function(chart) {
                                         const data = chart.data.datasets[0].data;
                                         const total = data.reduce((sum, val) => sum + val, 0);
@@ -433,6 +447,94 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }, 300);
     }
+
+    // Создание списка регионов
+    const regionsListContainer = document.createElement("div");
+    regionsListContainer.className = "regions-list-container";
+    regionsListContainer.innerHTML = `
+        <div class="regions-list-toggle" id="regions-list-toggle">
+            <span id="regions-toggle-text">Показать список регионов</span>
+            <span id="regions-toggle-arrow" class="toggle-arrow">▼</span>
+        </div>
+        <div class="regions-list-content" id="regions-list-content" style="display: none;">
+            <div class="regions-list-grid" id="regions-list-grid"></div>
+        </div>
+    `;
+
+    // Вставляем список после карты
+    map.parentElement.insertBefore(regionsListContainer, map.nextSibling);
+
+    // Генерируем список регионов в алфавитном порядке
+    const regionsList = Object.keys(regionMap).sort((a, b) => a.localeCompare(b, 'ru'));
+    const regionsListGrid = document.getElementById("regions-list-grid");
+
+    regionsList.forEach(regionName => {
+        const regionItem = document.createElement("div");
+        regionItem.className = "region-list-item";
+        regionItem.textContent = regionName;
+        regionItem.dataset.code = regionMap[regionName];
+
+        regionItem.addEventListener("click", () => {
+            const codeInDb = regionMap[regionName];
+            regionTitle.textContent = regionName;
+            regionBody.innerHTML = `
+                <div class="loading-container">
+                    <div class="loading-spinner"></div>
+                    <p>Загрузка данных...</p>
+                </div>
+            `;
+
+            panel.style.display = "flex";
+            setTimeout(() => {
+                panel.classList.add("open");
+            }, 10);
+
+            Promise.all([
+                fetch(`/region/${codeInDb}`).then(res => res.json()),
+                fetch(`/region/${codeInDb}/monthly_stats`).then(res => res.json()),
+                fetch(`/region/${codeInDb}/top-uav-types`).then(res => res.json())
+            ])
+            .then(([flightsData, monthlyStats, uavData]) => {
+                regionBody.innerHTML = "";
+
+                if (monthlyStats && !monthlyStats.error) {
+                    createRegionCharts(monthlyStats, uavData || [], regionBody);
+                }
+            })
+            .catch(error => {
+                console.error("Ошибка загрузки данных региона:", error);
+                regionBody.innerHTML = `
+                    <div class="error-message">
+                        <p>Ошибка при загрузке данных региона. Попробуйте позже.</p>
+                    </div>
+                `;
+            });
+        });
+
+        regionsListGrid.appendChild(regionItem);
+    });
+
+    // Переключатель списка регионов
+    const regionsListToggle = document.getElementById("regions-list-toggle");
+    const regionsListContent = document.getElementById("regions-list-content");
+    const regionsToggleText = document.getElementById("regions-toggle-text");
+    const regionsToggleArrow = document.getElementById("regions-toggle-arrow");
+
+    let regionsListVisible = false;
+
+    regionsListToggle.addEventListener("click", () => {
+        if (!regionsListVisible) {
+            regionsListContent.style.display = "block";
+            regionsToggleText.textContent = "Скрыть список регионов";
+            regionsToggleArrow.style.transform = "rotate(180deg)";
+            regionsListVisible = true;
+        } else {
+            regionsListContent.style.display = "none";
+            regionsToggleText.textContent = "Показать список регионов";
+            regionsToggleArrow.style.transform = "rotate(0deg)";
+            regionsListVisible = false;
+        }
+    });
 
     fetch("/flights/stats")
         .then(res => res.json())

@@ -1,17 +1,16 @@
 from flask import Flask, jsonify, render_template
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from datetime import datetime
 
 app = Flask(__name__)
+app.config.from_pyfile('config.py')
 
-# Подключение к PostgreSQL
 DB_CONFIG = {
-    "dbname": "postgis_v2",
-    "user": "postgres",
-    "password": "qwerty",
-    "host": "localhost",
-    "port": 5432
+    "dbname": app.config['DB_NAME'],
+    "user": app.config['DB_USER'],
+    "password": app.config['DB_PASSWORD'],
+    "host": app.config.get('DB_HOST', 'localhost'),
+    "port": app.config.get('DB_PORT', 5432)
 }
 
 region_map = {
@@ -98,6 +97,12 @@ region_map = {
     "Ханты-Мансийский автономный округ — Югра": "RUKHM",
     "Ямало-Ненецкий автономный округ": "RUYAN",
     "Чукотский автономный округ": "RUCHU",
+    "Запорожская область": "RUZP",
+    "Алтайский край": "RUALT",
+    "Донецкая Народная Республика": "RUDON",
+    "Луганская Народная Республика": "RULUG",
+    "Херсонская область": "RUHR",
+    "Севастополь": "RUSV"
 }
 
 
@@ -501,6 +506,7 @@ def region_top_uav_types(region_name):
           AND TRIM(f.aircraft_model) <> ''
         GROUP BY TRIM(f.aircraft_model)
         ORDER BY count DESC
+        LIMIT 10;
         """, (f"%{full_region_name}%", f"%{region_name}%"))
 
         rows = cur.fetchall()

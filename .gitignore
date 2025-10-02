@@ -2,3 +2,4 @@
 /.idea
 /templates/Leaflet.html
 .env
+config.py
