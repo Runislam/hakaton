@@ -1,17 +1,40 @@
 from flask import Flask, jsonify, render_template
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from flask import Flask, render_template, redirect, url_for, session
+import psycopg2
+from auth import auth_bp
+import pandas as pd
+from flask import request
+from datetime import datetime
 
 app = Flask(__name__)
 app.config.from_pyfile('config.py')
+app = Flask(__name__)
+app.secret_key = "supersecretkey123"
 
+
+
+
+# Подключение к PostgreSQL
 DB_CONFIG = {
-    "dbname": app.config['DB_NAME'],
-    "user": app.config['DB_USER'],
-    "password": app.config['DB_PASSWORD'],
-    "host": app.config.get('DB_HOST', 'localhost'),
-    "port": app.config.get('DB_PORT', 5432)
+    "dbname": "post_gis_test",
+    "user": "postgres",
+    "password": "qwerty",
+    "host": "localhost",
+    "port": 5433
+
 }
+app.register_blueprint(auth_bp)
+
+@app.route("/")
+def index():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))  # редирект на логин
+    return render_template("index.html", username=session["username"])
+
+
+
 
 region_map = {
     "Московская область": "RUMOW",
@@ -471,6 +494,7 @@ def top_uav_types():
         return jsonify([]), 500
 
 
+
 @app.route("/region/<region_name>/top-uav-types")
 def region_top_uav_types(region_name):
     conn = get_db_connection()
@@ -515,5 +539,47 @@ def index():
     return render_template("index.html")
 
 
+
+
+@app.route("/admin", methods=["GET", "POST"])
+def admin_panel():
+    if session.get("role") != "admin":
+        return "Доступ запрещён", 403
+
+    return render_template("admin_panel.html")
+
+
+@app.route("/admin/upload", methods=["POST"])
+def upload_excel():
+    if session.get("role") != "admin":
+        return "Доступ запрещён", 403
+
+    file = request.files.get("file")
+    if not file:
+        return "Файл не выбран", 400
+
+    try:
+        df = pd.read_excel(file)
+        # тут можешь обработать Excel
+        # пример: вывести первые строки
+        print(df.head())
+
+        # например, можно записывать данные в таблицу flights:
+        # conn = get_db_connection()
+        # cur = conn.cursor()
+        # for _, row in df.iterrows():
+        #     cur.execute("INSERT INTO flights (col1, col2) VALUES (%s, %s)", (row["col1"], row["col2"]))
+        # conn.commit()
+        # cur.close()
+        # conn.close()
+
+        return "Файл успешно загружен и обработан!"
+    except Exception as e:
+        return f"Ошибка при обработке: {e}", 500
+
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+
+
