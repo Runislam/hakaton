@@ -4,7 +4,7 @@ import psycopg2
 from config import *
 auth_bp = Blueprint("auth", __name__)
 
-# Подключение к базе (используем то, что в main.py)
+# Подключение к базе
 def get_db_connection():
     conn = psycopg2.connect(
         dbname=DB_NAME,
@@ -62,7 +62,7 @@ def login():
 
             return redirect(url_for("index"))
         else:
-            error = "Неверный логин или пароль!"  # сохраняем ошибку
+            error = "Неверный логин или пароль!"
 
     return render_template("login.html", error=error)
 
