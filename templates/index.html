@@ -15,38 +15,28 @@
 <body class="bg-gray-50 min-h-screen">
   <header class="bg-white shadow-sm">
     <div class="container mx-auto px-4 py-6 flex justify-between items-center">
-<<<<<<< Updated upstream
       <h1 class="text-2xl font-bold text-blue-600">Полет БВС</h1>
       <nav>
         <ul class="flex space-x-6">
-          <li><a href="#" class="text-gray-700 hover:text-blue-600 transition">Главная</a></li>
+          <li><a href="{{ url_for('index') }}" class="text-gray-700 hover:text-blue-600 transition">Главная</a></li>
           <li><a href="#" class="text-gray-700 hover:text-blue-600 transition">О проекте</a></li>
-          <li><a href="#" class="text-gray-700 hover:text-blue-600 transition">Личный кабинет</a></li>
+
+          {% if username %}
+            <li><a href="{{ url_for('auth.logout') }}" class="text-gray-700 hover:text-blue-600 transition">Выйти</a></li>
+          {% else %}
+            <li><a href="{{ url_for('auth.login') }}" class="text-gray-700 hover:text-blue-600 transition">Войти</a></li>
+          {% endif %}
+
+          {% if session.get('role') == 'admin' %}
+            <li>
+              <a href="{{ url_for('admin_panel') }}"
+                 class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition">
+                Перейти в админ-панель
+              </a>
+            </li>
+          {% endif %}
         </ul>
       </nav>
-=======
-      <h1 class="text-2xl font-bold text-blue-600">Карта России</h1>
-     <nav>
-  <ul class="flex space-x-6">
-    <li><a href="{{ url_for('index') }}" class="text-gray-700 hover:text-blue-600 transition">Главная</a></li>
-    <li><a href="#" class="text-gray-700 hover:text-blue-600 transition">О проекте</a></li>
-    {% if username %}
-      <li><a href="#" class="text-gray-700">Привет, {{ username }}</a></li>
-      <li><a href="{{ url_for('auth.logout') }}" class="text-gray-700 hover:text-blue-600 transition">Выйти</a></li>
-    {% else %}
-      <li><a href="{{ url_for('auth.login') }}" class="text-gray-700 hover:text-blue-600 transition">Войти</a></li>
-    {% endif %}
-      {% if session['role'] == 'admin' %}
-      <li>
-      <a href="{{ url_for('admin_panel') }}"
-         class="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition">
-        Перейти в админ-панель
-      </a>
-      </li>
-        {% endif %}
-  </ul>
-</nav>
->>>>>>> Stashed changes
     </div>
   </header>
 

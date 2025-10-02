@@ -534,13 +534,6 @@ def region_top_uav_types(region_name):
         return jsonify([]), 500
 
 
-@app.route("/")
-def index():
-    return render_template("index.html")
-
-
-
-
 @app.route("/admin", methods=["GET", "POST"])
 def admin_panel():
     if session.get("role") != "admin":
