@@ -1,17 +1,17 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg2
-
+from config import *
 auth_bp = Blueprint("auth", __name__)
 
 # Подключение к базе (используем то, что в main.py)
 def get_db_connection():
     conn = psycopg2.connect(
-        dbname="post_gis_test",
-        user="postgres",
-        password="qwerty",
-        host="localhost",
-        port=5433
+        dbname=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD,
+        host=DB_HOST,
+        port=DB_PORT
     )
     return conn
 

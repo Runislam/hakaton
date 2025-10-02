@@ -7,24 +7,14 @@ from auth import auth_bp
 import pandas as pd
 from flask import request
 from datetime import datetime
-
+from config import *
 app = Flask(__name__)
 app.config.from_pyfile('config.py')
 app = Flask(__name__)
-app.secret_key = "supersecretkey123"
+
+app.secret_key = key
 
 
-
-
-# Подключение к PostgreSQL
-DB_CONFIG = {
-    "dbname": "post_gis_test",
-    "user": "postgres",
-    "password": "qwerty",
-    "host": "localhost",
-    "port": 5433
-
-}
 app.register_blueprint(auth_bp)
 
 @app.route("/")

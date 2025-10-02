@@ -21,17 +21,8 @@ import psycopg2
 import psycopg2.extras
 from psycopg2.extras import execute_values
 from multiprocessing import Pool, cpu_count
-# ---------------- DB CONFIG (отредактируй при необходимости) ----------------
-DB_CONFIG = {
-    "dbname": os.environ.get("PG_DB", "post_gis_test2"),
-    "user": os.environ.get("PG_USER", "postgres"),
-    "password": os.environ.get("PG_PASS", "qwerty"),
-    "host": os.environ.get("PG_HOST", "localhost"),
-    "port": int(os.environ.get("PG_PORT", 5433))
-}
-# ---------------------------------------------------------------------------
+from config import DB_CONFIG
 
-# === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
 
 
 MODEL_NORMALIZATION = {
