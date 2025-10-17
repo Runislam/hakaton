@@ -12,7 +12,7 @@ import pandas as pd
 from flask import request
 from datetime import datetime
 from config import *
-from hakaton import full_parser
+import full_parser
 
 app = Flask(__name__)
 app.config.from_pyfile('config.py')
