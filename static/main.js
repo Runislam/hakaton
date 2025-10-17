@@ -243,7 +243,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             pointBackgroundColor: "rgba(59, 130, 246, 1)",
                             pointBorderColor: "#ffffff",
                             pointBorderWidth: 2,
-                            pointRadius: 6,
+                            pointRadius: 3,
                             pointHoverRadius: 8
                         }]
                     },
@@ -603,9 +603,154 @@ document.addEventListener("DOMContentLoaded", () => {
             .then(([flightsData, monthlyStats, uavData]) => {
                 regionBody.innerHTML = "";
 
-                // Добавляем диаграммы
+                // Создаем контейнер с двумя колонками: статистика слева, карта справа
+                const mainContainer = document.createElement("div");
+                mainContainer.className = "grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6";
+
+                // Колонка слева для статистики (заглушка, заполнится позже)
+                const statsColumn = document.createElement("div");
+                statsColumn.id = "region-stats-summary";
+                statsColumn.className = "space-y-4";
+
+                // Колонка справа для карты
+                const mapColumn = document.createElement("div");
+                mapColumn.className = "space-y-4";
+
+                // Добавляем контейнер для карты (постоянно видимый)
+                const mapContainer = document.createElement("div");
+                mapContainer.id = "region-map-container";
+                mapContainer.className = "bg-white p-4 rounded-lg shadow";
+                mapContainer.innerHTML = `
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-gray-800">Карта полётов</h3>
+                        <div class="flex items-center space-x-2">
+                            <div class="flex items-center">
+                            </div>
+                            <div class="flex items-center">
+                            </div>
+                            <div class="flex items-center">
+                            </div>
+                        </div>
+                    </div>
+                    <div id="region-leaflet-map" style="height: 350px; border-radius: 6px;"></div>
+                    <div class="mt-2 text-xs text-gray-500">
+                        Последние полёты по региону (до 1000 записей)
+                    </div>
+                `;
+
+                mapColumn.appendChild(mapContainer);
+                mainContainer.appendChild(statsColumn);
+                mainContainer.appendChild(mapColumn);
+                regionBody.appendChild(mainContainer);
+
+                let leafletMap = null;
+
+                // Автоматически загружаем карту
+                loadRegionMap(codeInDb);
+
+                // Добавляем диаграммы в левую колонку
                 if (monthlyStats && !monthlyStats.error) {
-                    createRegionCharts(monthlyStats, uavData || [], regionBody);
+                    createRegionCharts(monthlyStats, uavData || [], statsColumn);
+                }
+
+                // Функция загрузки карты региона
+                async function loadRegionMap(regionCode) {
+                    try {
+                        const response = await fetch(`/region/${regionCode}/geojson`);
+                        const data = await response.json();
+
+                        if (data.error) {
+                            console.error('Ошибка загрузки карты:', data.error);
+                            return;
+                        }
+
+                        // Инициализируем карту Leaflet
+                        if (leafletMap) {
+                            leafletMap.remove();
+                        }
+
+                        leafletMap = L.map('region-leaflet-map', {
+                            zoomControl: true,
+                            dragging: true,
+                            scrollWheelZoom: false,
+                            doubleClickZoom: false,
+                            boxZoom: false,
+                            keyboard: false,
+                            tap: false,
+                            touchZoom: false,
+                            attributionControl: false
+                        });
+
+                        // Устанавливаем белый фон для карты без тайлов
+                        const mapContainer = document.getElementById('region-leaflet-map');
+                        if (mapContainer) {
+                            mapContainer.style.backgroundColor = '#ffffff';
+                        }
+
+                        // Добавляем контур региона
+                        if (data.region_geom) {
+                            const regionGeom = JSON.parse(data.region_geom);
+                            const regionLayer = L.geoJSON(regionGeom, {
+                                style: {
+                                    color: 'blue',
+                                    weight: 2,
+                                    fillColor: 'lightblue',
+                                    fillOpacity: 0.2
+                                }
+                            }).addTo(leafletMap);
+
+                            // Центруем карту по региону
+                            leafletMap.fitBounds(regionLayer.getBounds().pad(0.1));
+                        }
+
+                        // Добавляем точки полётов
+                        data.flights.forEach(flight => {
+                            // Точки вылета
+                            if (flight.dep) {
+                                const depCoords = JSON.parse(flight.dep);
+                                const lat = depCoords.coordinates[1];
+                                const lon = depCoords.coordinates[0];
+
+                                L.circleMarker([lat, lon], {
+                                    color: '#ff001863',
+                                    radius: 3,
+                                    stroke: false,
+                                    fillOpacity: 0.8
+                                })
+                                .bindPopup(`
+                                    <b>SID:</b> ${flight.sid}<br>
+                                    <b>Оператор:</b> ${flight.operator || 'Не указан'}<br>
+                                    <b>Модель:</b> ${flight.model || 'Не указана'}<br>
+                                    <b>Тип:</b> Вылет
+                                `)
+                                .addTo(leafletMap);
+                            }
+
+                            // Точки прилёта (красные)
+                            if (flight.arr) {
+                                const arrCoords = JSON.parse(flight.arr);
+                                const lat = arrCoords.coordinates[1];
+                                const lon = arrCoords.coordinates[0];
+
+                                L.circleMarker([lat, lon], {
+                                    color: '#ff001863',
+                                    radius: 3,
+                                    stroke: false,
+                                    fillOpacity: 0.8
+                                })
+                                .bindPopup(`
+                                    <b>SID:</b> ${flight.sid}<br>
+                                    <b>Оператор:</b> ${flight.operator || 'Не указан'}<br>
+                                    <b>Модель:</b> ${flight.model || 'Не указана'}<br>
+                                    <b>Тип:</b> Прилёт
+                                `)
+                                .addTo(leafletMap);
+                            }
+                        });
+
+                    } catch (error) {
+                        console.error('Ошибка загрузки карты региона:', error);
+                    }
                 }
 
             })

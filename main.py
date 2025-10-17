@@ -20,16 +20,14 @@ app = Flask(__name__)
 
 app.secret_key = key
 
-
 app.register_blueprint(auth_bp)
+
 
 @app.route("/")
 def index():
     if "user_id" not in session:
         return redirect(url_for("auth.login"))  # редирект на логин
     return render_template("index.html", username=session["username"])
-
-
 
 
 region_map = {
@@ -490,7 +488,6 @@ def top_uav_types():
         return jsonify([]), 500
 
 
-
 @app.route("/region/<region_name>/top-uav-types")
 def region_top_uav_types(region_name):
     conn = get_db_connection()
@@ -530,6 +527,158 @@ def region_top_uav_types(region_name):
         return jsonify([]), 500
 
 
+@app.route("/region/<region_name>/departure_points")
+def region_departure_points(region_name):
+    """Получение точек вылета в указанном регионе для отображения на карте"""
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    reverse_region_map = {v: k for k, v in region_map.items()}
+    full_region_name = reverse_region_map.get(region_name, region_name)
+
+    try:
+        # Получаем координаты точек вылета в указанном регионе
+        cur.execute("""
+        SELECT DISTINCT
+            ST_X(f.dep_point) as longitude,
+            ST_Y(f.dep_point) as latitude,
+            COUNT(*) as flight_count,
+            f.operator,
+            f.aircraft_model
+        FROM flights f
+        JOIN flights_regions fr ON f.sid = fr.fk_flight_id
+        JOIN regions r ON fr.fk_region_id = r.gid
+        WHERE (r.name ILIKE %s OR r.name ILIKE %s)
+          AND f.dep_point IS NOT NULL
+          AND fr.role IN ('departure', 'both')
+        GROUP BY ST_X(f.dep_point), ST_Y(f.dep_point), f.operator, f.aircraft_model
+        ORDER BY flight_count DESC
+        """, (f"%{full_region_name}%", f"%{region_name}%"))
+
+        points = cur.fetchall()
+
+        # Получаем границы региона для карты
+        cur.execute("""
+        SELECT 
+            ST_XMin(ST_Extent(r.geom)) as min_lon,
+            ST_XMax(ST_Extent(r.geom)) as max_lon,
+            ST_YMin(ST_Extent(r.geom)) as min_lat,
+            ST_YMax(ST_Extent(r.geom)) as max_lat
+        FROM regions r
+        WHERE r.name ILIKE %s OR r.name ILIKE %s
+        """, (f"%{full_region_name}%", f"%{region_name}%"))
+
+        bounds = cur.fetchone()
+
+        cur.close()
+        conn.close()
+
+        result = {
+            "region_name": full_region_name,
+            "bounds": {
+                "min_lon": float(bounds["min_lon"]) if bounds["min_lon"] else 0,
+                "max_lon": float(bounds["max_lon"]) if bounds["max_lon"] else 0,
+                "min_lat": float(bounds["min_lat"]) if bounds["min_lat"] else 0,
+                "max_lat": float(bounds["max_lat"]) if bounds["max_lat"] else 0
+            },
+            "departure_points": [
+                {
+                    "longitude": float(point["longitude"]),
+                    "latitude": float(point["latitude"]),
+                    "flight_count": point["flight_count"],
+                    "operator": point["operator"],
+                    "aircraft_model": point["aircraft_model"]
+                }
+                for point in points
+            ]
+        }
+
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"Ошибка при получении точек вылета для региона {region_name}: {e}")
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Ошибка получения данных"}), 500
+
+
+
+
+@app.route("/region/<region_name>/geojson")
+def region_geojson_data(region_name):
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    reverse_region_map = {v: k for k, v in region_map.items()}
+    full_region_name = reverse_region_map.get(region_name, region_name)
+
+    try:
+        # Получаем геометрию региона
+        cur.execute("""
+        SELECT ST_AsGeoJSON(r.geom) as region_geom, r.name
+        FROM regions r
+        WHERE r.name ILIKE %s OR r.name ILIKE %s
+        LIMIT 1
+        """, (f"%{full_region_name}%", f"%{region_name}%"))
+
+        region_result = cur.fetchone()
+        region_geom = None
+        if region_result and region_result["region_geom"]:
+            region_geom = region_result["region_geom"]
+
+        # Получаем полёты региона с координатами
+        cur.execute("""
+        SELECT 
+            f.sid,
+            ST_AsGeoJSON(f.dep_point) as dep_geojson,
+            ST_AsGeoJSON(f.arr_point) as arr_geojson,
+            fr.role,
+            f.operator,
+            f.aircraft_model,
+            f.dep_time
+        FROM flights f
+        JOIN flights_regions fr ON f.sid = fr.fk_flight_id
+        JOIN regions r ON fr.fk_region_id = r.gid
+        WHERE (r.name ILIKE %s OR r.name ILIKE %s)
+          AND (f.dep_point IS NOT NULL OR f.arr_point IS NOT NULL)
+        ORDER BY f.dep_time DESC
+        LIMIT 1000
+        """, (f"%{full_region_name}%", f"%{region_name}%"))
+
+        flights = cur.fetchall()
+
+        cur.close()
+        conn.close()
+
+        # Формируем данные для карты
+        flights_data = []
+        for flight in flights:
+            flight_data = {
+                "sid": flight["sid"],
+                "dep": flight["dep_geojson"],
+                "arr": flight["arr_geojson"],
+                "role": flight["role"],
+                "operator": flight["operator"],
+                "model": flight["aircraft_model"],
+                "dep_time": flight["dep_time"].isoformat() if flight["dep_time"] else None
+            }
+            flights_data.append(flight_data)
+
+        result = {
+            "region_name": full_region_name,
+            "region_geom": region_geom,
+            "flights": flights_data
+        }
+
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"Ошибка при получении GeoJSON данных для региона {region_name}: {e}")
+        cur.close()
+        conn.close()
+        return jsonify({"error": "Ошибка получения данных"}), 500
+
+
 @app.route("/admin", methods=["GET", "POST"])
 def admin_panel():
     if session.get("role") != "admin":
@@ -565,6 +714,7 @@ def upload_excel():
         import traceback
         traceback.print_exc()
         return f"Ошибка при обработке: {str(e)}", 500
+
 
 if __name__ == "__main__":
     app.run(debug=True)
