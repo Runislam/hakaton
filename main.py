@@ -12,11 +12,10 @@ import pandas as pd
 from flask import request
 from datetime import datetime
 from config import *
-from hakaton import full_parser
+import full_parser
 
 app = Flask(__name__)
 app.config.from_pyfile('config.py')
-app = Flask(__name__)
 
 app.secret_key = key
 
@@ -128,6 +127,10 @@ region_map = {
 def get_db_connection():
     conn = psycopg2.connect(**DB_CONFIG)
     return conn
+
+@app.route("/health")
+def health():
+    return "OK", 200
 
 
 @app.route("/flights/counts")
@@ -567,7 +570,7 @@ def upload_excel():
         return f"Ошибка при обработке: {str(e)}", 500
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
 
 
 
