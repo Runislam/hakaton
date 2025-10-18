@@ -200,31 +200,44 @@ document.addEventListener("DOMContentLoaded", () => {
                     </div>
                 </div>
             </div>
-            <div class="region-stats-and-uav-container">
-                <div class="region-uav-chart-section">
-                    <h4 class="region-chart-title">Топ 10 БВС в регионе</h4>
-                    <div class="region-chart-wrapper region-pie-wrapper">
-                        <canvas id="region-uav-chart"></canvas>
-                    </div>
-                </div>
-                <div class="region-stats-summary">
-                    <div class="region-stat-card">
-                        <span class="region-stat-label">Всего полётов:</span>
-                        <span class="region-stat-value">${statsData.total_flights.toLocaleString()}</span>
-                    </div>
-                    <div class="region-stat-card">
-                        <span class="region-stat-label">Общий налёт:</span>
-                        <span class="region-stat-value">${statsData.total_hours} ч</span>
-                    </div>
-                    <div class="region-stat-card">
-                        <span class="region-stat-label">Типов БВС:</span>
-                        <span class="region-stat-value">${uavData.length}</span>
-                    </div>
+        `;
+
+        // Нижняя часть: слева — только блок с БВС, справа — карта
+        const bottomGrid = document.createElement("div");
+        bottomGrid.className = "region-bottom-grid";
+
+        // Левая колонка: только раздел UAV (убрана region-stats-summary)
+        const leftCol = document.createElement("div");
+        leftCol.className = "region-uav-col";
+        leftCol.innerHTML = `
+            <div class="region-uav-chart-section">
+                <h4 class="region-chart-title">Топ 10 БВС в регионе</h4>
+                <div class="region-chart-wrapper region-pie-wrapper">
+                    <canvas id="region-uav-chart"></canvas>
                 </div>
             </div>
         `;
 
+        // Правая колонка: контейнер карты
+        const rightCol = document.createElement("div");
+        rightCol.className = "region-map-column";
+        rightCol.innerHTML = `
+            <div id="region-map-container" class="bg-white p-4 rounded-lg shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">Карта полётов</h3>
+                </div>
+                <div id="region-leaflet-map" style="height: 350px; border-radius: 6px;"></div>
+                <div class="mt-2 text-xs text-gray-500">
+                    Последние полёты по региону (до 1000 записей)
+                </div>
+            </div>
+        `;
+
+        bottomGrid.appendChild(leftCol);
+        bottomGrid.appendChild(rightCol);
+
         containerElement.appendChild(chartsContainer);
+        containerElement.appendChild(bottomGrid);
 
         // Создание диаграммы полётов
         setTimeout(() => {
@@ -603,55 +616,37 @@ document.addEventListener("DOMContentLoaded", () => {
             .then(([flightsData, monthlyStats, uavData]) => {
                 regionBody.innerHTML = "";
 
-                // Создаем контейнер с двумя колонками: статистика слева, карта справа
+                // Помещаем блок с графиками в верхнюю часть модального окна (растягивает на всю ширину)
+                if (monthlyStats && !monthlyStats.error) {
+                    createRegionCharts(monthlyStats, uavData || [], regionBody);
+                }
+
+                // Создаем основной контейнер с двумя колонками под дополнительную статистику/контент
                 const mainContainer = document.createElement("div");
                 mainContainer.className = "grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6";
 
-                // Колонка слева для статистики (заглушка, заполнится позже)
+                // Левая колонка — дополнительная статистика / списки
                 const statsColumn = document.createElement("div");
                 statsColumn.id = "region-stats-summary";
                 statsColumn.className = "space-y-4";
 
-                // Колонка справа для карты
+                // Правая колонка — оставляем как контейнер для дополнительного контента (без карты)
                 const mapColumn = document.createElement("div");
                 mapColumn.className = "space-y-4";
 
-                // Добавляем контейнер для карты (постоянно видимый)
-                const mapContainer = document.createElement("div");
-                mapContainer.id = "region-map-container";
-                mapContainer.className = "bg-white p-4 rounded-lg shadow";
-                mapContainer.innerHTML = `
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-bold text-gray-800">Карта полётов</h3>
-                        <div class="flex items-center space-x-2">
-                            <div class="flex items-center">
-                            </div>
-                            <div class="flex items-center">
-                            </div>
-                            <div class="flex items-center">
-                            </div>
-                        </div>
-                    </div>
-                    <div id="region-leaflet-map" style="height: 350px; border-radius: 6px;"></div>
-                    <div class="mt-2 text-xs text-gray-500">
-                        Последние полёты по региону (до 1000 записей)
-                    </div>
-                `;
-
-                mapColumn.appendChild(mapContainer);
                 mainContainer.appendChild(statsColumn);
                 mainContainer.appendChild(mapColumn);
+
+                // Вставляем основной контейнер под блоком графиков
                 regionBody.appendChild(mainContainer);
+
+                // (Удалена ручная вставка mapContainer — карта теперь создаётся внутри createRegionCharts
+                //  и располагается справа от блока статистики под region-charts-grid)
 
                 let leafletMap = null;
 
-                // Автоматически загружаем карту
+                // Автоматически загружаем карту (createRegionCharts уже добавил DOM-контейнер #region-leaflet-map)
                 loadRegionMap(codeInDb);
-
-                // Добавляем диаграммы в левую колонку
-                if (monthlyStats && !monthlyStats.error) {
-                    createRegionCharts(monthlyStats, uavData || [], statsColumn);
-                }
 
                 // Функция загрузки карты региона
                 async function loadRegionMap(regionCode) {
@@ -682,9 +677,9 @@ document.addEventListener("DOMContentLoaded", () => {
                         });
 
                         // Устанавливаем белый фон для карты без тайлов
-                        const mapContainer = document.getElementById('region-leaflet-map');
-                        if (mapContainer) {
-                            mapContainer.style.backgroundColor = '#ffffff';
+                        const mapContainerEl = document.getElementById('region-leaflet-map');
+                        if (mapContainerEl) {
+                            mapContainerEl.style.backgroundColor = '#ffffff';
                         }
 
                         // Добавляем контур региона

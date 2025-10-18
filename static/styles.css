@@ -456,8 +456,8 @@
 /* Контейнер для диаграммы БВС и статистики */
 .region-stats-and-uav-container {
     display: grid;
-    grid-template-columns: 0.4fr 280px;
-    gap: 20px;
+    grid-template-columns: 1fr 220px;
+    gap: 16px;
     margin-bottom: 20px;
 }
 
@@ -713,6 +713,14 @@
     .region-charts-grid {
         grid-template-columns: 1fr;
     }
+
+    .region-bottom-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .region-map-column #region-leaflet-map {
+        height: 280px;
+    }
 }
 
 /* Анимация появления элементов списка */
@@ -840,5 +848,61 @@
 @media (max-width: 480px) {
     .regions-list-grid {
         grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* Нижняя часть в модальном окне: статистика слева, карта справа (под графиками) */
+.region-bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 20px;
+    align-items: start;
+    margin-bottom: 20px;
+}
+
+/* Сделать секцию БВС такого же размера, как контейнер карты */
+.region-bottom-grid {
+    /* правая колонка — ширина карты; левая остаётся гибкой */
+    grid-template-columns: 1fr 380px;
+}
+
+/* Левый столбец-обёртка для секции UAV */
+.region-uav-col {
+    display: flex;
+    justify-content: flex-start;
+}
+
+/* Секция с БВС — соответствие размерам карты */
+.region-uav-col .region-uav-chart-section {
+    width: 100%;
+    max-width: 380px;        /* совпадает с шириной правой колонки */
+    height: 350px;           /* совпадает с высотой карты */
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+/* Убедиться, что контейнер карты использует те же размеры */
+.region-map-column #region-map-container {
+    height: 350px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Карта внутри контейнера растягивается по высоте */
+.region-map-column #region-leaflet-map {
+    flex: 1;
+    height: 100% !important;
+}
+
+/* На мобильных экранах отменяем фиксированные размеры */
+@media (max-width: 768px) {
+    .region-uav-col .region-uav-chart-section,
+    .region-map-column #region-map-container {
+        max-width: none;
+        width: 100%;
+        height: auto;
     }
 }
