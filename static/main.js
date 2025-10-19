@@ -137,33 +137,36 @@ document.addEventListener("DOMContentLoaded", () => {
     const filtersContainer = document.createElement("div");
     filtersContainer.className = "filters-container";
     filtersContainer.innerHTML = `
-      <div class="filters-bar">
-        <!-- Поиск -->
-        <div class="search-block relative">
-          <input
-            type="text"
-            id="region-search-input"
-            placeholder="Введите название региона..."
-            class="region-search-input"
-            autocomplete="off"
-          />
-          <ul id="region-suggestions" class="region-suggestions"></ul>
-        </div>
+        <div class="filters-bar">
+            <!-- Поиск -->
+            <div class="search-block relative">
+            <input
+                type="text"
+                id="region-search-input"
+                placeholder="Введите название региона..."
+                class="region-search-input"
+                autocomplete="off"
+            />
+            <ul id="region-suggestions" class="region-suggestions"></ul>
+            </div>
 
-        <!-- Даты -->
-        <div class="date-filters">
-          <label>От:
-            <input type="date" id="start-date" class="date-input" />
-          </label>
-          <label>До:
-            <input type="date" id="end-date" class="date-input" />
-          </label>
-        </div>
+            <!-- Даты -->
+            <div class="date-filters">
+            <label>От:
+                <input type="date" id="start-date" class="date-input" />
+            </label>
+            <label>До:
+                <input type="date" id="end-date" class="date-input" />
+            </label>
+            </div>
 
-        <!-- Кнопка -->
-        <button id="apply-filters" class="filter-button">Применить</button>
-      </div>
-    `;
+            <!-- Кнопки -->
+            <div class="buttons-group">
+            <button id="apply-filters" class="filter-button">Применить</button>
+            <button id="export-report" class="filter-button secondary">Выгрузить отчёт</button>
+            </div>
+        </div>
+        `;
 
     mapContainer.parentElement.insertBefore(filtersContainer, mapContainer);
 
@@ -256,6 +259,19 @@ document.addEventListener("DOMContentLoaded", () => {
       .filter-button:hover {
         background-color: #0066d6;
       }
+
+      .buttons-group {
+      display: flex;
+      gap: 10px;
+      }
+
+      .filter-button.secondary {
+      background-color: #28a745;
+      }
+
+      .filter-button.secondary:hover {
+      background-color: #218838;
+      }
     `;
     document.head.appendChild(style);
 
@@ -265,7 +281,23 @@ document.addEventListener("DOMContentLoaded", () => {
     const startDateInput = document.getElementById("start-date");
     const endDateInput = document.getElementById("end-date");
     const applyButton = document.getElementById("apply-filters");
+    const exportButton = document.getElementById("export-report");
+    exportButton.addEventListener("click", () => {
+    const regionName = searchInput.value.trim();
+    const startDate = startDateInput.value;
+    const endDate = endDateInput.value;
 
+    const params = new URLSearchParams({
+        region: regionName,
+        start: startDate,
+        end: endDate
+    });
+
+    console.log("Выгрузка отчёта:", Object.fromEntries(params));
+
+    // Если отчёт формируется на сервере
+    window.open(`/flights/report?${params.toString()}`, "_blank");
+    });
     const regionsList = Object.keys(regionMap).sort((a, b) => a.localeCompare(b, "ru"));
 
     // --- Поиск с подсказками ---
