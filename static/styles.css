@@ -406,7 +406,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 20px 24px;
+    padding: 2px 8px;  /* было 20px 24px */
     background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
     color: white;
     flex-shrink: 0;
@@ -414,8 +414,9 @@
 
 .region-modal-header h2 {
     margin: 0;
-    font-size: 24px;
-    font-weight: 700;
+    font-size: 18px;  /* было 24px */
+    font-weight: 500;  /* было 700 */
+    line-height: 1.2;
 }
 
 .region-close {

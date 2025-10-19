@@ -306,10 +306,34 @@ function loadRegionData(regionName, codeInDb) {
         fetch(`/region/${codeInDb}`).then(res => res.json()),
         fetch(`/region/${codeInDb}/monthly_stats`).then(res => res.json()),
         fetch(`/region/${codeInDb}/top-uav-types`).then(res => res.json()),
-        fetch(`/region/${codeInDb}/top-operators`).then(res => res.json())
+        fetch(`/region/${codeInDb}/top-operators`).then(res => res.json()),
+        fetch(`/region/${codeInDb}/summary_stats`).then(res => res.json())
     ])
-        .then(([flightsData, monthlyStats, uavData, operatorsData]) => {
+        .then(([flightsData, monthlyStats, uavData, operatorsData, summaryStats]) => {
             regionBody.innerHTML = "";
+
+            // Добавляем блок с общей статистикой
+            if (summaryStats && !summaryStats.error) {
+                const summaryContainer = document.createElement("div");
+                summaryContainer.className = "mb-4";
+                summaryContainer.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div class="dashboard-frame p-3">
+                            <p class="text-xs text-gray-600 mb-1">Всего полётов</p>
+                            <p class="text-xl font-bold">${summaryStats.total_flights.toLocaleString()}</p>
+                        </div>
+                        <div class="dashboard-frame p-3">
+                            <p class="text-xs text-gray-600 mb-1">Общий налёт (ч)</p>
+                            <p class="text-xl font-bold">${summaryStats.total_hours.toLocaleString()}</p>
+                        </div>
+                        <div class="dashboard-frame p-3">
+                            <p class="text-xs text-gray-600 mb-1">Район полетной информации</p>
+                            <p class="text-sm font-semibold truncate" title="${summaryStats.source_center}">${summaryStats.source_center}</p>
+                        </div>
+                    </div>
+                `;
+                regionBody.appendChild(summaryContainer);
+            }
 
             if (monthlyStats && !monthlyStats.error) {
                 createRegionCharts(monthlyStats, uavData || [], regionBody);
