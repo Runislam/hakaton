@@ -126,52 +126,208 @@ document.addEventListener("DOMContentLoaded", () => {
     tooltip.className = "tooltip";
     document.body.appendChild(tooltip);
 
-    // Создаём контейнер списка регионов
-    const regionsListContainer = document.createElement("div");
-    regionsListContainer.className = "regions-list-container";
-    regionsListContainer.innerHTML = `
-        <div class="regions-list-toggle" id="regions-list-toggle">
-            <span id="regions-toggle-text">Показать список регионов</span>
-            <span id="regions-toggle-arrow" class="toggle-arrow">▼</span>
+
+       // Создаём контейнер под картой
+    // === Блок фильтров под картой (поиск + календарь) ===
+
+        // === Контейнер под картой ===
+
+    const mapContainer = document.getElementById("regions-charts");
+    //const chartsContainer = document.getElementById("regions-charts");
+    const filtersContainer = document.createElement("div");
+    filtersContainer.className = "filters-container";
+    filtersContainer.innerHTML = `
+      <div class="filters-bar">
+        <!-- Поиск -->
+        <div class="search-block relative">
+          <input
+            type="text"
+            id="region-search-input"
+            placeholder="Введите название региона..."
+            class="region-search-input"
+            autocomplete="off"
+          />
+          <ul id="region-suggestions" class="region-suggestions"></ul>
         </div>
-        <div class="regions-list-content" id="regions-list-content" style="display: none;">
-            <div class="regions-list-grid" id="regions-list-grid"></div>
+
+        <!-- Даты -->
+        <div class="date-filters">
+          <label>От:
+            <input type="date" id="start-date" class="date-input" />
+          </label>
+          <label>До:
+            <input type="date" id="end-date" class="date-input" />
+          </label>
         </div>
+
+        <!-- Кнопка -->
+        <button id="apply-filters" class="filter-button">Применить</button>
+      </div>
     `;
 
-    map.parentElement.insertBefore(regionsListContainer, map.nextSibling);
+    mapContainer.parentElement.insertBefore(filtersContainer, mapContainer);
 
-    // Генерируем список регионов
-    const regionsList = Object.keys(regionMap).sort((a, b) => a.localeCompare(b, 'ru'));
-    const regionsListGrid = document.getElementById("regions-list-grid");
 
-    regionsList.forEach(regionName => {
-        const regionItem = document.createElement("div");
-        regionItem.className = "region-list-item";
-        regionItem.textContent = regionName;
-        regionItem.dataset.code = regionMap[regionName];
+    // === Стили (можно потом вынести в CSS) ===
+    const style = document.createElement("style");
+    style.textContent = `
+      .filters-container {
+        width: 100%;
+        background: #fff;
+        border-radius: 14px;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+        padding: 18px 22px;
+        margin-top: 18px;
+      }
 
-        regionItem.addEventListener("click", () => {
-            loadRegionData(regionName, regionMap[regionName]);
+      .filters-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 18px;
+      }
+
+      .search-block {
+        flex: 1;
+        min-width: 320px;
+      }
+
+      .region-search-input {
+        width: 100%;
+        font-size: 16px;
+        padding: 12px 14px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+      }
+
+      .region-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        list-style: none;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        margin-top: 4px;
+        padding: 0;
+        max-height: 240px;
+        overflow-y: auto;
+        display: none;
+        z-index: 1000;
+        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+      }
+
+      .region-suggestions li {
+        padding: 10px 14px;
+        cursor: pointer;
+      }
+
+      .region-suggestions li:hover {
+        background-color: #f0f4ff;
+      }
+
+      .date-filters {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: nowrap;
+      }
+
+      .date-input {
+        font-size: 15px;
+        padding: 9px 12px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+      }
+
+      .filter-button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 18px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+
+      .filter-button:hover {
+        background-color: #0066d6;
+      }
+    `;
+    document.head.appendChild(style);
+
+    // === Логика ===
+    const searchInput = document.getElementById("region-search-input");
+    const suggestionsList = document.getElementById("region-suggestions");
+    const startDateInput = document.getElementById("start-date");
+    const endDateInput = document.getElementById("end-date");
+    const applyButton = document.getElementById("apply-filters");
+
+    const regionsList = Object.keys(regionMap).sort((a, b) => a.localeCompare(b, "ru"));
+
+    // --- Поиск с подсказками ---
+    searchInput.addEventListener("input", () => {
+      const query = searchInput.value.trim().toLowerCase();
+      suggestionsList.innerHTML = "";
+
+      if (query.length < 2) {
+        suggestionsList.style.display = "none";
+        return;
+      }
+
+      const matches = regionsList.filter(region =>
+        region.toLowerCase().includes(query)
+      );
+
+      if (matches.length === 0) {
+        suggestionsList.style.display = "none";
+        return;
+      }
+
+      matches.forEach(regionName => {
+        const li = document.createElement("li");
+        li.textContent = regionName;
+        li.addEventListener("click", () => {
+          searchInput.value = regionName;
+          suggestionsList.style.display = "none";
         });
+        suggestionsList.appendChild(li);
+      });
 
-        regionsListGrid.appendChild(regionItem);
+      suggestionsList.style.display = "block";
     });
 
-    // Переключатель списка регионов
-    const regionsListToggle = document.getElementById("regions-list-toggle");
-    const regionsListContent = document.getElementById("regions-list-content");
-    const regionsToggleText = document.getElementById("regions-toggle-text");
-    const regionsToggleArrow = document.getElementById("regions-toggle-arrow");
-
-    let regionsListVisible = false;
-
-    regionsListToggle.addEventListener("click", () => {
-        regionsListVisible = !regionsListVisible;
-        regionsListContent.style.display = regionsListVisible ? "block" : "none";
-        regionsToggleText.textContent = regionsListVisible ? "Скрыть список регионов" : "Показать список регионов";
-        regionsToggleArrow.style.transform = regionsListVisible ? "rotate(180deg)" : "rotate(0deg)";
+    // --- Скрытие при клике вне подсказок ---
+    document.addEventListener("click", (e) => {
+      if (!filtersContainer.contains(e.target)) {
+        suggestionsList.style.display = "none";
+      }
     });
+
+    // --- Кнопка "Применить" ---
+    applyButton.addEventListener("click", () => {
+      const regionName = searchInput.value.trim();
+      const startDate = startDateInput.value;
+      const endDate = endDateInput.value;
+
+      if (!regionMap[regionName]) {
+        alert("Выберите корректный регион.");
+        return;
+      }
+
+      if (startDate && endDate && startDate > endDate) {
+        alert("Дата начала не может быть позже даты конца.");
+        return;
+      }
+
+      console.log("▶ Применён фильтр:", { regionName, startDate, endDate });
+      openRegionPanel(regionName, regionMap[regionName]); // вызов твоей функции
+    });
+
+
 
     // Загружаем общую статистику
     fetch("/flights/stats")
