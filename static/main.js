@@ -324,8 +324,9 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       console.log("▶ Применён фильтр:", { regionName, startDate, endDate });
-      openRegionPanel(regionName, regionMap[regionName]); // вызов твоей функции
+      loadRegionData(regionName, regionMap[regionName]); // ✅ используем старую рабочую функцию
     });
+
 
 
 
