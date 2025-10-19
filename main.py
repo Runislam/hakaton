@@ -27,7 +27,7 @@ app.register_blueprint(auth_bp)
 @app.route("/")
 def index():
     if "user_id" not in session:
-        return redirect(url_for("auth.login"))  # редирект на логин
+        return redirect(url_for("auth.login"))
     return render_template("index.html", username=session["username"])
 
 
@@ -253,13 +253,11 @@ def flights_regions_stats():
 @app.route("/region/<region_name>/top-operators")
 def region_top_operators_by_name(region_name):
     """
-    Алиас для /region/<int:region_gid>/top-operators — ищет gid региона по имени/коду
-    и возвращает топ операторов (совместимо с существующим endpoint по gid).
+    Топ операторов для региона с учетом классификации на физических и юридических лиц
     """
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Попытка сопоставить переданный параметр (например, код RUMOW) с полным именем региона
     reverse_region_map = {v: k for k, v in region_map.items()}
     full_region_name = reverse_region_map.get(region_name, region_name)
 
@@ -278,7 +276,6 @@ def region_top_operators_by_name(region_name):
 
         region_gid = row[0]
 
-        # Повторяем ту же логику, что и в /region/<int:region_gid>/top-operators
         cur.execute("""
         WITH categorized_operators AS (
         SELECT 
@@ -520,7 +517,6 @@ def region_monthly_stats(region_name):
     full_region_name = reverse_region_map.get(region_name, region_name)
 
     try:
-        # Модифицированный запрос: разделяем подсчет полетов и часов
         cur.execute("""
             SELECT 
                 TO_CHAR(f.dep_time, 'MM') as month,
@@ -544,7 +540,7 @@ def region_monthly_stats(region_name):
             JOIN flights_regions fr ON f.sid = fr.fk_flight_id
             JOIN regions r ON fr.fk_region_id = r.gid
             WHERE (r.name ILIKE %s OR r.name ILIKE %s)
-              AND f.dep_time IS NOT NULL  -- минимальное условие для группировки по месяцам
+              AND f.dep_time IS NOT NULL
             GROUP BY TO_CHAR(f.dep_time, 'MM'), TO_CHAR(f.dep_time, 'Month')
             ORDER BY TO_CHAR(f.dep_time, 'MM')
         """, (f"%{full_region_name}%", f"%{region_name}%"))
@@ -569,30 +565,27 @@ def region_monthly_stats(region_name):
         month_names = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
                        'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
 
-        # Инициализируем данные нулями
         flights_by_month = [0] * 12
         hours_by_month = [0] * 12
 
-        # Заполняем данные из запроса
         total_flights_with_time = 0
         total_valid_hours = 0
         for month, month_name, all_flights, valid_time_flights, hours in rows:
-            month_index = int(month) - 1  # Преобразуем к индексу массива (0-11)
-            flights_by_month[month_index] = all_flights  # ВСЕ полеты с известным месяцем
-            hours_by_month[month_index] = round(hours, 1)  # Только часы с валидным временем
+            month_index = int(month) - 1
+            flights_by_month[month_index] = all_flights
+            hours_by_month[month_index] = round(hours, 1)
             total_flights_with_time += all_flights
             total_valid_hours += hours
 
-        # Добавляем полеты без времени вылета к общему количеству
         total_all_flights = total_flights_with_time + flights_without_time
 
         result = {
             "months": month_names,
-            "flights": flights_by_month,  # ВСЕ полеты по месяцам
-            "hours": hours_by_month,  # Только релевантные часы по месяцам
-            "total_flights": total_all_flights,  # ВСЕ полеты включая без времени
-            "total_hours": round(total_valid_hours, 1),  # Только релевантные часы
-            "flights_without_time": flights_without_time,  # Полеты без времени (для отладки)
+            "flights": flights_by_month,
+            "hours": hours_by_month,
+            "total_flights": total_all_flights,
+            "total_hours": round(total_valid_hours, 1),
+            "flights_without_time": flights_without_time,
             "coverage_info": {
                 "flights_with_time": total_flights_with_time,
                 "flights_with_valid_duration": sum([1 for hours in hours_by_month if hours > 0]),
@@ -611,7 +604,7 @@ def region_monthly_stats(region_name):
 
 @app.route("/region/<region_name>/summary_stats")
 def region_summary_stats(region_name):
-    """Получение общей статистики по региону: кол-во полётов, часы, source_center"""
+    """Получение общей статистики по региону"""
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
@@ -743,85 +736,12 @@ def region_top_uav_types(region_name):
         return jsonify([]), 500
 
 
-@app.route("/region/<region_name>/departure_points")
-def region_departure_points(region_name):
-    """Получение точек вылета в указанном регионе для отображения на карте"""
-    conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-
-    reverse_region_map = {v: k for k, v in region_map.items()}
-    full_region_name = reverse_region_map.get(region_name, region_name)
-
-    try:
-        # Получаем координаты точек вылета в указанном регионе
-        cur.execute("""
-        SELECT DISTINCT
-            ST_X(f.dep_point) as longitude,
-            ST_Y(f.dep_point) as latitude,
-            COUNT(*) as flight_count,
-            f.operator,
-            f.aircraft_model
-        FROM flights f
-        JOIN flights_regions fr ON f.sid = fr.fk_flight_id
-        JOIN regions r ON fr.fk_region_id = r.gid
-        WHERE (r.name ILIKE %s OR r.name ILIKE %s)
-          AND f.dep_point IS NOT NULL
-          AND fr.role IN ('departure', 'both')
-        GROUP BY ST_X(f.dep_point), ST_Y(f.dep_point), f.operator, f.aircraft_model
-        ORDER BY flight_count DESC
-        """, (f"%{full_region_name}%", f"%{region_name}%"))
-
-        points = cur.fetchall()
-
-        # Получаем границы региона для карты
-        cur.execute("""
-        SELECT 
-            ST_XMin(ST_Extent(r.geom)) as min_lon,
-            ST_XMax(ST_Extent(r.geom)) as max_lon,
-            ST_YMin(ST_Extent(r.geom)) as min_lat,
-            ST_YMax(ST_Extent(r.geom)) as max_lat
-        FROM regions r
-        WHERE r.name ILIKE %s OR r.name ILIKE %s
-        """, (f"%{full_region_name}%", f"%{region_name}%"))
-
-        bounds = cur.fetchone()
-
-        cur.close()
-        conn.close()
-
-        result = {
-            "region_name": full_region_name,
-            "bounds": {
-                "min_lon": float(bounds["min_lon"]) if bounds["min_lon"] else 0,
-                "max_lon": float(bounds["max_lon"]) if bounds["max_lon"] else 0,
-                "min_lat": float(bounds["min_lat"]) if bounds["min_lat"] else 0,
-                "max_lat": float(bounds["max_lat"]) if bounds["max_lat"] else 0
-            },
-            "departure_points": [
-                {
-                    "longitude": float(point["longitude"]),
-                    "latitude": float(point["latitude"]),
-                    "flight_count": point["flight_count"],
-                    "operator": point["operator"],
-                    "aircraft_model": point["aircraft_model"]
-                }
-                for point in points
-            ]
-        }
-
-        return jsonify(result)
-
-    except Exception as e:
-        print(f"Ошибка при получении точек вылета для региона {region_name}: {e}")
-        cur.close()
-        conn.close()
-        return jsonify({"error": "Ошибка получения данных"}), 500
-
-
-
-
 @app.route("/region/<region_name>/geojson")
 def region_geojson_data(region_name):
+    """
+    Получение GeoJSON данных региона с информацией о полётах.
+    Полёты, попавшие в запретные зоны, отмечаются флагом in_restricted.
+    """
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
 
@@ -831,7 +751,7 @@ def region_geojson_data(region_name):
     try:
         # Получаем геометрию региона
         cur.execute("""
-        SELECT ST_AsGeoJSON(r.geom) as region_geom, r.name
+        SELECT ST_AsGeoJSON(r.geom) as region_geom, r.gid
         FROM regions r
         WHERE r.name ILIKE %s OR r.name ILIKE %s
         LIMIT 1
@@ -839,8 +759,21 @@ def region_geojson_data(region_name):
 
         region_result = cur.fetchone()
         region_geom = None
+        region_gid = None
         if region_result and region_result["region_geom"]:
             region_geom = region_result["region_geom"]
+            region_gid = region_result["gid"]
+
+        # Получаем SID полётов, которые находятся в запретных зонах
+        cur.execute("""
+        SELECT DISTINCT f.sid
+        FROM flights f
+        JOIN flights_regions fr ON fr.fk_flight_id = f.sid
+        JOIN restricted_zones rz ON ST_Within(COALESCE(f.dep_point, f.arr_point), rz.geom)
+        WHERE fr.fk_region_id = %s
+        """, (region_gid,))
+
+        restricted_sids = {row['sid'] for row in cur.fetchall()}
 
         # Получаем полёты региона с координатами
         cur.execute("""
@@ -854,11 +787,10 @@ def region_geojson_data(region_name):
             f.dep_time
         FROM flights f
         JOIN flights_regions fr ON f.sid = fr.fk_flight_id
-        JOIN regions r ON fr.fk_region_id = r.gid
-        WHERE (r.name ILIKE %s OR r.name ILIKE %s)
+        WHERE fr.fk_region_id = %s
           AND (f.dep_point IS NOT NULL OR f.arr_point IS NOT NULL)
         ORDER BY f.dep_time DESC
-        """, (f"%{full_region_name}%", f"%{region_name}%"))
+        """, (region_gid,))
 
         flights = cur.fetchall()
 
@@ -868,16 +800,16 @@ def region_geojson_data(region_name):
         # Формируем данные для карты
         flights_data = []
         for flight in flights:
-            flight_data = {
+            flights_data.append({
                 "sid": flight["sid"],
                 "dep": flight["dep_geojson"],
                 "arr": flight["arr_geojson"],
                 "role": flight["role"],
                 "operator": flight["operator"],
                 "model": flight["aircraft_model"],
-                "dep_time": flight["dep_time"].isoformat() if flight["dep_time"] else None
-            }
-            flights_data.append(flight_data)
+                "dep_time": flight["dep_time"].isoformat() if flight["dep_time"] else None,
+                "in_restricted": flight["sid"] in restricted_sids  # 🚩 Флаг запретной зоны
+            })
 
         result = {
             "region_name": full_region_name,
@@ -922,7 +854,6 @@ def upload_excel():
     print(f"[INFO] Файл сохранён: {filepath}")
 
     try:
-        # Запуск обработки
         full_parser.main_from_file(filepath)
         return "Файл обработан успешно!"
     except Exception as e:

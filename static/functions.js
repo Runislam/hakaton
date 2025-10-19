@@ -355,6 +355,16 @@ function loadRegionData(regionName, codeInDb) {
                 <div id="region-map-container" class="bg-white p-4 rounded-lg shadow">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-bold text-gray-800">Карта полётов</h3>
+                        <div class="flex gap-3 text-xs">
+                            <div class="flex items-center gap-1">
+                                <span class="inline-block w-3 h-3 rounded-full bg-green-500"></span>
+                                <span>Безопасные</span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="inline-block w-3 h-3 rounded-full bg-red-500"></span>
+                                <span>В запретных зонах</span>
+                            </div>
+                        </div>
                     </div>
                     <div id="region-leaflet-map" style="height: 350px; border-radius: 6px;"></div>
                 </div>
@@ -463,6 +473,7 @@ async function loadRegionMap(regionCode) {
         window.currentRegionMap = leafletMap;
         mapElement.style.backgroundColor = '#ffffff';
 
+        // Отображаем границы региона
         if (data.region_geom) {
             const regionGeom = JSON.parse(data.region_geom);
             const regionLayer = L.geoJSON(regionGeom, {
@@ -477,8 +488,41 @@ async function loadRegionMap(regionCode) {
             leafletMap.fitBounds(regionLayer.getBounds().pad(0.1));
         }
 
+        if (data.restricted_zones && Array.isArray(data.restricted_zones)) {
+            data.restricted_zones.forEach(zone => {
+                try {
+                    const zoneGeom = JSON.parse(zone.geojson);
+                    L.geoJSON(zoneGeom, {
+                        style: {
+                            color: '#FF0000',
+                            weight: 2,
+                            fillColor: '#FF0000',
+                            fillOpacity: 0.3,
+                            dashArray: '5, 5'
+                        }
+                    })
+                    .bindPopup(`
+                        <div style="font-weight: bold; color: #DC2626;">
+                            Запретная зона
+                        </div>
+                        <div style="margin-top: 4px;">
+                            ${zone.name || 'Без названия'}
+                        </div>
+                    `)
+                    .addTo(leafletMap);
+                } catch (e) {
+                    console.error('Ошибка парсинга геометрии запретной зоны:', e);
+                }
+            });
+        }
+
+        // Отображаем полёты с цветовой индикацией (красный = в запретной зоне, зелёный = безопасный)
         if (data.flights && Array.isArray(data.flights)) {
             data.flights.forEach(flight => {
+                // Определяем цвет маркера в зависимости от того, в запретной зоне или нет
+                const markerColor = flight.in_restricted ? '#ff001863' : '#0099333d';
+                const statusText = flight.in_restricted ? 'В запретной зоне' : 'Безопасный полёт';
+
                 if (flight.dep) {
                     try {
                         const depCoords = JSON.parse(flight.dep);
@@ -486,16 +530,25 @@ async function loadRegionMap(regionCode) {
                         const lon = depCoords.coordinates[0];
 
                         L.circleMarker([lat, lon], {
-                            color: '#ff001863',
-                            radius: 3,
-                            stroke: false,
+                            color: markerColor,
+                            fillColor: markerColor,
+                            radius: 2,
+                            stroke: true,
+                            weight: 1,
                             fillOpacity: 0.8
                         })
                             .bindPopup(`
-                                <b>SID:</b> ${flight.sid || 'N/A'}<br>
-                                <b>Оператор:</b> ${flight.operator || 'Не указан'}<br>
-                                <b>Модель:</b> ${flight.model || 'Не указана'}<br>
-                                <b>Тип:</b> Вылет
+                                <div style="min-width: 200px;">
+                                    <div style="font-weight: bold; color: ${markerColor}; margin-bottom: 8px;">
+                                        ${statusText}
+                                    </div>
+                                    <div style="border-top: 1px solid #e5e7eb; padding-top: 8px;">
+                                        <b>SID:</b> ${flight.sid || 'N/A'}<br>
+                                        <b>Оператор:</b> ${flight.operator || 'Не указан'}<br>
+                                        <b>Модель:</b> ${flight.model || 'Не указана'}<br>
+                                        <b>Тип:</b> Вылет
+                                    </div>
+                                </div>
                             `)
                             .addTo(leafletMap);
                     } catch (e) {
@@ -510,16 +563,25 @@ async function loadRegionMap(regionCode) {
                         const lon = arrCoords.coordinates[0];
 
                         L.circleMarker([lat, lon], {
-                            color: '#ff001863',
-                            radius: 3,
-                            stroke: false,
+                            color: markerColor,
+                            fillColor: markerColor,
+                            radius: 2,
+                            stroke: true,
+                            weight: 1,
                             fillOpacity: 0.8
                         })
                             .bindPopup(`
-                                <b>SID:</b> ${flight.sid || 'N/A'}<br>
-                                <b>Оператор:</b> ${flight.operator || 'Не указан'}<br>
-                                <b>Модель:</b> ${flight.model || 'Не указана'}<br>
-                                <b>Тип:</b> Прилёт
+                                <div style="min-width: 200px;">
+                                    <div style="font-weight: bold; color: ${markerColor}; margin-bottom: 8px;">
+                                        ${statusText}
+                                    </div>
+                                    <div style="border-top: 1px solid #e5e7eb; padding-top: 8px;">
+                                        <b>SID:</b> ${flight.sid || 'N/A'}<br>
+                                        <b>Оператор:</b> ${flight.operator || 'Не указан'}<br>
+                                        <b>Модель:</b> ${flight.model || 'Не указана'}<br>
+                                        <b>Тип:</b> Прилёт
+                                    </div>
+                                </div>
                             `)
                             .addTo(leafletMap);
                     } catch (e) {
