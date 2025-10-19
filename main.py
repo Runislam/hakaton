@@ -680,8 +680,7 @@ def top_uav_types():
         WHERE TRIM(aircraft_model) IS NOT NULL
           AND TRIM(aircraft_model) <> ''
         GROUP BY TRIM(aircraft_model)
-        ORDER BY count DESC
-        LIMIT 10;
+        ORDER BY count DESC;
         """)
 
         rows = cur.fetchall()
@@ -739,8 +738,10 @@ def region_top_uav_types(region_name):
 @app.route("/region/<region_name>/geojson")
 def region_geojson_data(region_name):
     """
-    Получение GeoJSON данных региона с информацией о полётах.
-    Полёты, попавшие в запретные зоны, отмечаются флагом in_restricted.
+    Получение GeoJSON данных региона с информацией о полётах:
+    - Красные точки — полёты в запретных зонах
+    - Зелёные точки — обычные полёты
+    - Чёрные (type 2,3) и жёлтые (type 7,8) точки — полёты рядом с аэродромами
     """
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -749,72 +750,101 @@ def region_geojson_data(region_name):
     full_region_name = reverse_region_map.get(region_name, region_name)
 
     try:
-        # Получаем геометрию региона
+        # 1️⃣ Геометрия региона
         cur.execute("""
-        SELECT ST_AsGeoJSON(r.geom) as region_geom, r.gid
-        FROM regions r
-        WHERE r.name ILIKE %s OR r.name ILIKE %s
-        LIMIT 1
+            SELECT ST_AsGeoJSON(r.geom) AS region_geom, r.gid
+            FROM regions r
+            WHERE r.name ILIKE %s OR r.name ILIKE %s
+            LIMIT 1
         """, (f"%{full_region_name}%", f"%{region_name}%"))
+        region_row = cur.fetchone()
 
-        region_result = cur.fetchone()
-        region_geom = None
-        region_gid = None
-        if region_result and region_result["region_geom"]:
-            region_geom = region_result["region_geom"]
-            region_gid = region_result["gid"]
+        if not region_row:
+            return jsonify({"error": f"Регион '{region_name}' не найден"}), 404
 
-        # Получаем SID полётов, которые находятся в запретных зонах
+        region_geom = region_row["region_geom"]
+        region_gid = region_row["gid"]
+
+        # 2️⃣ Полёты, попавшие в запретные зоны
         cur.execute("""
-        SELECT DISTINCT f.sid
-        FROM flights f
-        JOIN flights_regions fr ON fr.fk_flight_id = f.sid
-        JOIN restricted_zones rz ON ST_Within(COALESCE(f.dep_point, f.arr_point), rz.geom)
-        WHERE fr.fk_region_id = %s
+            SELECT DISTINCT f.sid
+            FROM flights f
+            JOIN flights_regions fr ON fr.fk_flight_id = f.sid
+            JOIN restricted_zones rz ON ST_Within(COALESCE(f.dep_point, f.arr_point), rz.geom)
+            WHERE fr.fk_region_id = %s
         """, (region_gid,))
+        restricted_sids = {row["sid"] for row in cur.fetchall()}
 
-        restricted_sids = {row['sid'] for row in cur.fetchall()}
-
-        # Получаем полёты региона с координатами
+        # 3️⃣ Все полёты региона
         cur.execute("""
-        SELECT 
-            f.sid,
-            ST_AsGeoJSON(f.dep_point) as dep_geojson,
-            ST_AsGeoJSON(f.arr_point) as arr_geojson,
-            fr.role,
-            f.operator,
-            f.aircraft_model,
-            f.dep_time
-        FROM flights f
-        JOIN flights_regions fr ON f.sid = fr.fk_flight_id
-        WHERE fr.fk_region_id = %s
-          AND (f.dep_point IS NOT NULL OR f.arr_point IS NOT NULL)
-        ORDER BY f.dep_time DESC
+            SELECT 
+                f.sid,
+                ST_AsGeoJSON(f.dep_point) AS dep_geojson,
+                ST_AsGeoJSON(f.arr_point) AS arr_geojson,
+                fr.role,
+                f.operator,
+                f.aircraft_model,
+                f.dep_time
+            FROM flights f
+            JOIN flights_regions fr ON fr.fk_flight_id = f.sid
+            WHERE fr.fk_region_id = %s
+              AND (f.dep_point IS NOT NULL OR f.arr_point IS NOT NULL)
+            ORDER BY f.dep_time DESC
         """, (region_gid,))
-
         flights = cur.fetchall()
+
+        # 4️⃣ Подозрительные полёты рядом с аэродромами (≤ 1000 м)
+        cur.execute("""
+            SELECT 
+                f.sid,
+                ST_AsGeoJSON(f.dep_point) AS dep_geojson,
+                ST_AsGeoJSON(f.arr_point) AS arr_geojson,
+                a.name AS aerodrome_name,
+                a.type AS aerodrome_type
+            FROM flights f
+            JOIN flights_regions fr ON fr.fk_flight_id = f.sid
+            JOIN aerodromes a 
+                ON ST_DWithin(
+                    COALESCE(f.dep_point, f.arr_point)::geography,
+                    ST_Centroid(a.zone)::geography,
+                    1000
+                )
+            WHERE fr.fk_region_id = %s
+        """, (region_gid,))
+        suspicious = cur.fetchall()
 
         cur.close()
         conn.close()
 
-        # Формируем данные для карты
+        # 5️⃣ Формирование данных для карты
         flights_data = []
-        for flight in flights:
+        for f in flights:
             flights_data.append({
-                "sid": flight["sid"],
-                "dep": flight["dep_geojson"],
-                "arr": flight["arr_geojson"],
-                "role": flight["role"],
-                "operator": flight["operator"],
-                "model": flight["aircraft_model"],
-                "dep_time": flight["dep_time"].isoformat() if flight["dep_time"] else None,
-                "in_restricted": flight["sid"] in restricted_sids  # 🚩 Флаг запретной зоны
+                "sid": f["sid"],
+                "dep": f["dep_geojson"],
+                "arr": f["arr_geojson"],
+                "role": f["role"],
+                "operator": f["operator"],
+                "model": f["aircraft_model"],
+                "dep_time": f["dep_time"].isoformat() if f["dep_time"] else None,
+                "in_restricted": f["sid"] in restricted_sids  # 🚩
+            })
+
+        suspicious_data = []
+        for f in suspicious:
+            suspicious_data.append({
+                "sid": f["sid"],
+                "dep": f["dep_geojson"],
+                "arr": f["arr_geojson"],
+                "aerodrome_name": f["aerodrome_name"],
+                "aerodrome_type": f["aerodrome_type"]
             })
 
         result = {
             "region_name": full_region_name,
             "region_geom": region_geom,
-            "flights": flights_data
+            "flights": flights_data,
+            "suspicious": suspicious_data
         }
 
         return jsonify(result)

@@ -86,7 +86,7 @@ function createRegionCharts(statsData, uavData, containerElement) {
     uavSection.id = "region-uav-section";
     uavSection.className = "region-uav-chart-section";
     uavSection.innerHTML = `
-        <h4 class="region-chart-title">Топ 10 БВС в регионе</h4>
+        <h4 class="region-chart-title">Структура типов БВС в регионе</h4>
         <div class="region-chart-wrapper region-pie-wrapper">
             <canvas id="region-uav-chart"></canvas>
         </div>
@@ -355,20 +355,29 @@ function loadRegionData(regionName, codeInDb) {
                 <div id="region-map-container" class="bg-white p-4 rounded-lg shadow">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-bold text-gray-800">Карта полётов</h3>
-                        <div class="flex gap-3 text-xs">
+                        <div class="flex flex-wrap gap-3 text-xs text-gray-700">
                             <div class="flex items-center gap-1">
-                                <span class="inline-block w-3 h-3 rounded-full bg-green-500"></span>
+                                <span class="inline-block w-3 h-3 rounded-full" style="background-color: #00cc33;"></span>
                                 <span>Безопасные</span>
                             </div>
                             <div class="flex items-center gap-1">
-                                <span class="inline-block w-3 h-3 rounded-full bg-red-500"></span>
+                                <span class="inline-block w-3 h-3 rounded-full" style="background-color: #ff0000;"></span>
                                 <span>В запретных зонах</span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="inline-block w-3 h-3 rounded-full" style="background-color: #34495eff;"></span>
+                                <span>Аэродром</span>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="inline-block w-3 h-3 rounded-full" style="background-color: #7f8c8dff;"></span>
+                                <span>Вертодром</span>
                             </div>
                         </div>
                     </div>
                     <div id="region-leaflet-map" style="height: 350px; border-radius: 6px;"></div>
                 </div>
             `;
+
 
             const statsColumn = document.createElement("div");
             statsColumn.id = "region-stats-summary";
@@ -458,6 +467,7 @@ async function loadRegionMap(regionCode) {
         const mapElement = document.getElementById('region-leaflet-map');
         if (!mapElement || typeof L === 'undefined') return;
 
+        // очищаем предыдущую карту
         if (window.currentRegionMap) {
             window.currentRegionMap.remove();
         }
@@ -473,14 +483,14 @@ async function loadRegionMap(regionCode) {
         window.currentRegionMap = leafletMap;
         mapElement.style.backgroundColor = '#ffffff';
 
-        // Отображаем границы региона
+        // 🗺️ Отображаем границы региона
         if (data.region_geom) {
             const regionGeom = JSON.parse(data.region_geom);
             const regionLayer = L.geoJSON(regionGeom, {
                 style: {
-                    color: 'blue',
+                    color: '#0000FF',
                     weight: 2,
-                    fillColor: 'lightblue',
+                    fillColor: '#ADD8E6',
                     fillOpacity: 0.2
                 }
             }).addTo(leafletMap);
@@ -488,112 +498,98 @@ async function loadRegionMap(regionCode) {
             leafletMap.fitBounds(regionLayer.getBounds().pad(0.1));
         }
 
-        if (data.restricted_zones && Array.isArray(data.restricted_zones)) {
-            data.restricted_zones.forEach(zone => {
-                try {
-                    const zoneGeom = JSON.parse(zone.geojson);
-                    L.geoJSON(zoneGeom, {
-                        style: {
-                            color: '#FF0000',
-                            weight: 2,
-                            fillColor: '#FF0000',
-                            fillOpacity: 0.3,
-                            dashArray: '5, 5'
-                        }
-                    })
-                    .bindPopup(`
-                        <div style="font-weight: bold; color: #DC2626;">
-                            Запретная зона
-                        </div>
-                        <div style="margin-top: 4px;">
-                            ${zone.name || 'Без названия'}
-                        </div>
-                    `)
-                    .addTo(leafletMap);
-                } catch (e) {
-                    console.error('Ошибка парсинга геометрии запретной зоны:', e);
-                }
-            });
-        }
-
-        // Отображаем полёты с цветовой индикацией (красный = в запретной зоне, зелёный = безопасный)
-        if (data.flights && Array.isArray(data.flights)) {
+        // ✈️ Отображаем полёты
+        if (Array.isArray(data.flights)) {
             data.flights.forEach(flight => {
-                // Определяем цвет маркера в зависимости от того, в запретной зоне или нет
-                const markerColor = flight.in_restricted ? '#ff001863' : '#0099333d';
-                const statusText = flight.in_restricted ? 'В запретной зоне' : 'Безопасный полёт';
+                let markerColor = '#00cc3356'; // зелёный по умолчанию
+                let statusText = 'Безопасный полёт';
 
-                if (flight.dep) {
+                if (flight.in_restricted) {
+                    markerColor = '#ff000048'; // красный — в запретной зоне
+                    statusText = 'Полёт в запретной зоне';
+                }
+
+                const addMarker = (coordsJSON, typeLabel) => {
                     try {
-                        const depCoords = JSON.parse(flight.dep);
-                        const lat = depCoords.coordinates[1];
-                        const lon = depCoords.coordinates[0];
+                        const coords = JSON.parse(coordsJSON);
+                        const lat = coords.coordinates[1];
+                        const lon = coords.coordinates[0];
 
                         L.circleMarker([lat, lon], {
                             color: markerColor,
                             fillColor: markerColor,
                             radius: 2,
-                            stroke: true,
-                            weight: 1,
-                            fillOpacity: 0.8
+                            stroke: false,
+                            fillOpacity: 0.9
                         })
-                            .bindPopup(`
-                                <div style="min-width: 200px;">
-                                    <div style="font-weight: bold; color: ${markerColor}; margin-bottom: 8px;">
-                                        ${statusText}
-                                    </div>
-                                    <div style="border-top: 1px solid #e5e7eb; padding-top: 8px;">
-                                        <b>SID:</b> ${flight.sid || 'N/A'}<br>
-                                        <b>Оператор:</b> ${flight.operator || 'Не указан'}<br>
-                                        <b>Модель:</b> ${flight.model || 'Не указана'}<br>
-                                        <b>Тип:</b> Вылет
-                                    </div>
-                                </div>
-                            `)
-                            .addTo(leafletMap);
+                        .bindPopup(`
+                            <div style="min-width:200px;">
+                                <b style="color:${markerColor};">${statusText}</b><br>
+                                <b>SID:</b> ${flight.sid || 'N/A'}<br>
+                                <b>Оператор:</b> ${flight.operator || 'Не указан'}<br>
+                                <b>Модель:</b> ${flight.model || 'Не указана'}<br>
+                                <b>Тип:</b> ${typeLabel}
+                            </div>
+                        `)
+                        .addTo(leafletMap);
                     } catch (e) {
-                        console.error('Ошибка парсинга координат вылета:', e);
+                        console.error('Ошибка парсинга координат:', e);
                     }
-                }
+                };
 
-                if (flight.arr) {
-                    try {
-                        const arrCoords = JSON.parse(flight.arr);
-                        const lat = arrCoords.coordinates[1];
-                        const lon = arrCoords.coordinates[0];
-
-                        L.circleMarker([lat, lon], {
-                            color: markerColor,
-                            fillColor: markerColor,
-                            radius: 2,
-                            stroke: true,
-                            weight: 1,
-                            fillOpacity: 0.8
-                        })
-                            .bindPopup(`
-                                <div style="min-width: 200px;">
-                                    <div style="font-weight: bold; color: ${markerColor}; margin-bottom: 8px;">
-                                        ${statusText}
-                                    </div>
-                                    <div style="border-top: 1px solid #e5e7eb; padding-top: 8px;">
-                                        <b>SID:</b> ${flight.sid || 'N/A'}<br>
-                                        <b>Оператор:</b> ${flight.operator || 'Не указан'}<br>
-                                        <b>Модель:</b> ${flight.model || 'Не указана'}<br>
-                                        <b>Тип:</b> Прилёт
-                                    </div>
-                                </div>
-                            `)
-                            .addTo(leafletMap);
-                    } catch (e) {
-                        console.error('Ошибка парсинга координат прилёта:', e);
-                    }
-                }
+                if (flight.dep) addMarker(flight.dep, 'Вылет');
+                if (flight.arr) addMarker(flight.arr, 'Прилёт');
             });
         }
+
+        // 🟡⚫ Подозрительные полёты возле аэродромов
+        if (Array.isArray(data.suspicious)) {
+            data.suspicious.forEach(flight => {
+                let markerColor = '#34495eff'; 
+                let statusText = 'Территория аэродрома';
+
+                if (flight.aerodrome_type === 7 || flight.aerodrome_type === 8) {
+                    markerColor = '#7f8c8dff'; // серый
+                    statusText = 'Территория вертодрома';
+                }
+
+                const addMarker = (coordsJSON, typeLabel) => {
+                    try {
+                        const coords = JSON.parse(coordsJSON);
+                        const lat = coords.coordinates[1];
+                        const lon = coords.coordinates[0];
+
+                        L.circleMarker([lat, lon], {
+                            color: markerColor,
+                            fillColor: markerColor,
+                            radius: 3,
+                            stroke: false,
+                            fillOpacity: 0.8
+                        })
+                        .bindPopup(`
+                            <div style="min-width:200px;">
+                                <b style="color:${markerColor};">${statusText}</b><br>
+                                <b>SID:</b> ${flight.sid || 'N/A'}<br>
+                                <b>Аэродром:</b> ${flight.aerodrome_name || 'Неизвестен'}<br>
+                                <b>Тип аэродрома:</b> ${flight.aerodrome_type || 'N/A'}
+                            </div>
+                        `)
+                        .addTo(leafletMap);
+                    } catch (e) {
+                        console.error('Ошибка парсинга координат аэродрома:', e);
+                    }
+                };
+
+                if (flight.dep) addMarker(flight.dep, 'Вылет');
+                if (flight.arr) addMarker(flight.arr, 'Прилёт');
+            });
+        }
+
     } catch (error) {
         console.error('Ошибка загрузки карты региона:', error);
     }
 }
+
 
 function loadRegionCharts() {
     const chartsContainer = document.getElementById('charts-content');
