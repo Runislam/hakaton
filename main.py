@@ -384,7 +384,7 @@ def region_top_operators_by_name(region_name):
         SELECT 
             CASE 
                 WHEN entity_type = 'Юридическое лицо' THEN operator
-                ELSE 'Физические лица (обобщенно)'
+                ELSE 'Физические лица'
             END AS operator_name,
             COUNT(*) AS flights_count
         FROM categorized_operators
@@ -798,7 +798,6 @@ def region_geojson_data(region_name):
         WHERE (r.name ILIKE %s OR r.name ILIKE %s)
           AND (f.dep_point IS NOT NULL OR f.arr_point IS NOT NULL)
         ORDER BY f.dep_time DESC
-        LIMIT 1000
         """, (f"%{full_region_name}%", f"%{region_name}%"))
 
         flights = cur.fetchall()

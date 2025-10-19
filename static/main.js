@@ -233,9 +233,9 @@ document.addEventListener("DOMContentLoaded", () => {
                             tension: 0.4,
                             pointBackgroundColor: "rgba(59, 130, 246, 1)",
                             pointBorderColor: "#ffffff",
-                            pointBorderWidth: 2,
-                            pointRadius: 3,
-                            pointHoverRadius: 8
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            borderSkipped: false
                         }]
                     },
                     options: {
@@ -295,8 +295,11 @@ document.addEventListener("DOMContentLoaded", () => {
                         datasets: [{
                             label: "Часы полёта",
                             data: statsData.hours,
+                            fill: true,
+                            tension: 0.4,
                             backgroundColor: "rgba(16, 185, 129, 0.8)",
                             borderColor: "rgba(16, 185, 129, 1)",
+                            pointBorderColor: "#ffffff",
                             borderWidth: 1,
                             borderRadius: 4,
                             borderSkipped: false
@@ -479,17 +482,221 @@ document.addEventListener("DOMContentLoaded", () => {
                 panel.classList.add("open");
             }, 10);
 
+            // Параллельная загрузка данных о полётах, месячной статистике, БВС и топ-операторах
             Promise.all([
                 fetch(`/region/${codeInDb}`).then(res => res.json()),
                 fetch(`/region/${codeInDb}/monthly_stats`).then(res => res.json()),
-                fetch(`/region/${codeInDb}/top-uav-types`).then(res => res.json())
+                fetch(`/region/${codeInDb}/top-uav-types`).then(res => res.json()),
+                fetch(`/region/${codeInDb}/top-operators`).then(res => res.json()) // добавлен запрос
             ])
-            .then(([flightsData, monthlyStats, uavData]) => {
+            .then(([flightsData, monthlyStats, uavData, operatorsData]) => {
                 regionBody.innerHTML = "";
 
+                // Помещаем блок с графиками и секцию UAV (createRegionCharts добавляет #region-uav-section)
                 if (monthlyStats && !monthlyStats.error) {
                     createRegionCharts(monthlyStats, uavData || [], regionBody);
                 }
+
+                // Создаем основной контейнер с тремя колонками: UAV | MAP | STATS
+                const mainContainer = document.createElement("div");
+                mainContainer.className = "grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6";
+
+                // Получаем секцию UAV, созданную внутри createRegionCharts и перемещаем её в левую колонку
+                const uavWrapper = document.createElement("div");
+                uavWrapper.className = "space-y-4";
+                const uavSection = regionBody.querySelector("#region-uav-section");
+                if (uavSection) {
+                    uavWrapper.appendChild(uavSection);
+                }
+
+                // Создаем контейнер карты — поместим его в центральную колонку
+                const mapWrapper = document.createElement("div");
+                mapWrapper.className = "region-map-column";
+                mapWrapper.innerHTML = `
+                    <div id="region-map-container" class="bg-white p-4 rounded-lg shadow">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-bold text-gray-800">Карта полётов</h3>
+                        </div>
+                        <div id="region-leaflet-map" style="height: 350px; border-radius: 6px;"></div>
+                        <div class="mt-2 text-xs text-gray-500">
+                        </div>
+                    </div>
+                `;
+
+                // Правая колонка — summary / топ операторов (statsColumn)
+                const statsColumn = document.createElement("div");
+                statsColumn.id = "region-stats-summary";
+                statsColumn.className = "space-y-4";
+
+                // НОВЫЙ БЛОК: Создаем секцию с топ операторами (если есть) — перенесено сюда
+                if (operatorsData && operatorsData.length > 0) {
+                    const operatorsSection = document.createElement("div");
+                    operatorsSection.className = "bg-white rounded-lg shadow-lg p-6";
+                    operatorsSection.innerHTML = `
+                        <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <span>Топ 5 операторов БВС</span>
+                        </h3>
+                        <div class="space-y-3" id="operators-list"></div>
+                    `;
+                    statsColumn.appendChild(operatorsSection);
+
+                    // Заполняем список операторов
+                    setTimeout(() => {
+                        const operatorsList = operatorsSection.querySelector('#operators-list');
+                        if (operatorsList) {
+                            operatorsData.forEach((operator, index) => {
+                                const operatorItem = document.createElement('div');
+                                operatorItem.className = 'operator-item';
+                                operatorItem.style.animationDelay = `${index * 0.05}s`;
+
+                                let badgeColor = '#6b7280';
+                                if (index === 0) badgeColor = '#fbbf24';
+                                else if (index === 1) badgeColor = '#9ca3af';
+                                else if (index === 2) badgeColor = '#cd7f32';
+
+                                operatorItem.innerHTML = `
+                                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-200">
+                                        <div class="flex items-center gap-3 flex-1 min-w-0">
+                                            <div class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-white" 
+                                                style="background-color: ${badgeColor};">
+                                                ${index + 1}
+                                            </div>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-sm font-semibold text-gray-800 truncate" title="${operator.operator}">
+                                                    ${operator.operator}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="flex-shrink-0 ml-3">
+                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                                ${operator.flights_count.toLocaleString()} полётов
+                                            </span>
+                                        </div>
+                                    </div>
+                                `;
+
+                                operatorsList.appendChild(operatorItem);
+                            });
+                        }
+                    }, 100);
+                } else {
+                    const noOperatorsMsg = document.createElement("div");
+                    noOperatorsMsg.className = "bg-white rounded-lg shadow-lg p-6";
+                    noOperatorsMsg.innerHTML = `
+                        <div class="text-center text-gray-500">
+                            <p class="text-lg mb-2">👥</p>
+                            <p>Нет данных об операторах для этого региона</p>
+                        </div>
+                    `;
+                    statsColumn.appendChild(noOperatorsMsg);
+                }
+
+                // Собираем три колонки в mainContainer
+                mainContainer.appendChild(uavWrapper);
+                mainContainer.appendChild(mapWrapper);
+                mainContainer.appendChild(statsColumn);
+
+                // Вставляем основной контейнер под блоком графиков
+                regionBody.appendChild(mainContainer);
+
+                let leafletMap = null;
+
+                // Автоматически загружаем карту
+                loadRegionMap(codeInDb);
+
+                // Функция загрузки карты региона (пользуется общая функция ниже в файле)
+                async function loadRegionMap(regionCode) {
+                    try {
+                        const response = await fetch(`/region/${regionCode}/geojson`);
+                        const data = await response.json();
+
+                        if (data.error) {
+                            console.error('Ошибка загрузки карты:', data.error);
+                            return;
+                        }
+
+                        if (leafletMap) {
+                            leafletMap.remove();
+                        }
+
+                        leafletMap = L.map('region-leaflet-map', {
+                            zoomControl: true,
+                            dragging: true,
+                            scrollWheelZoom: false,
+                            doubleClickZoom: false,
+                            boxZoom: false,
+                            keyboard: false,
+                            tap: false,
+                            touchZoom: false,
+                            attributionControl: false
+                        });
+
+                        const mapContainerEl = document.getElementById('region-leaflet-map');
+                        if (mapContainerEl) {
+                            mapContainerEl.style.backgroundColor = '#ffffff';
+                        }
+
+                        if (data.region_geom) {
+                            const regionGeom = JSON.parse(data.region_geom);
+                            const regionLayer = L.geoJSON(regionGeom, {
+                                style: {
+                                    color: 'blue',
+                                    weight: 2,
+                                    fillColor: 'lightblue',
+                                    fillOpacity: 0.2
+                                }
+                            }).addTo(leafletMap);
+
+                            leafletMap.fitBounds(regionLayer.getBounds().pad(0.1));
+                        }
+
+                        data.flights.forEach(flight => {
+                            if (flight.dep) {
+                                const depCoords = JSON.parse(flight.dep);
+                                const lat = depCoords.coordinates[1];
+                                const lon = depCoords.coordinates[0];
+
+                                L.circleMarker([lat, lon], {
+                                    color: '#ff001863',
+                                    radius: 3,
+                                    stroke: false,
+                                    fillOpacity: 0.8
+                                })
+                                .bindPopup(`
+                                    <b>SID:</b> ${flight.sid}<br>
+                                    <b>Оператор:</b> ${flight.operator || 'Не указан'}<br>
+                                    <b>Модель:</b> ${flight.model || 'Не указана'}<br>
+                                    <b>Тип:</b> Вылет
+                                `)
+                                .addTo(leafletMap);
+                            }
+
+                            if (flight.arr) {
+                                const arrCoords = JSON.parse(flight.arr);
+                                const lat = arrCoords.coordinates[1];
+                                const lon = arrCoords.coordinates[0];
+
+                                L.circleMarker([lat, lon], {
+                                    color: '#ff001863',
+                                    radius: 3,
+                                    stroke: false,
+                                    fillOpacity: 0.8
+                                })
+                                .bindPopup(`
+                                    <b>SID:</b> ${flight.sid}<br>
+                                    <b>Оператор:</b> ${flight.operator || 'Не указан'}<br>
+                                    <b>Модель:</b> ${flight.model || 'Не указана'}<br>
+                                    <b>Тип:</b> Прилёт
+                                `)
+                                .addTo(leafletMap);
+                            }
+                        });
+
+                    } catch (error) {
+                        console.error('Ошибка загрузки карты региона:', error);
+                    }
+                }
+
             })
             .catch(error => {
                 console.error("Ошибка загрузки данных региона:", error);
@@ -585,7 +792,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 panel.classList.add("open");
             }, 10);
 
-            // Параллельная загрузка данных о полётах, месячной статистики и БВС
+            // Параллельная загрузка данных о полётах, месячной статистике, БВС и топ-операторов
             Promise.all([
                 fetch(`/region/${codeInDb}`).then(res => res.json()),
                 fetch(`/region/${codeInDb}/monthly_stats`).then(res => res.json()),
@@ -622,7 +829,6 @@ document.addEventListener("DOMContentLoaded", () => {
                         </div>
                         <div id="region-leaflet-map" style="height: 350px; border-radius: 6px;"></div>
                         <div class="mt-2 text-xs text-gray-500">
-                            Последние полёты по региону (до 1000 записей)
                         </div>
                     </div>
                 `;
@@ -638,7 +844,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     operatorsSection.className = "bg-white rounded-lg shadow-lg p-6";
                     operatorsSection.innerHTML = `
                         <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                            <span>👥</span>
                             <span>Топ 5 операторов БВС</span>
                         </h3>
                         <div class="space-y-3" id="operators-list"></div>
@@ -709,7 +914,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Автоматически загружаем карту
                 loadRegionMap(codeInDb);
 
-                // Функция загрузки карты региона (без изменений)
+                // Функция загрузки карты региона (пользуется общая функция ниже в файле)
                 async function loadRegionMap(regionCode) {
                     try {
                         const response = await fetch(`/region/${regionCode}/geojson`);
