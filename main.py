@@ -390,7 +390,7 @@ def region_top_operators_by_name(region_name):
         FROM categorized_operators
         GROUP BY operator_name
         ORDER BY flights_count DESC
-        LIMIT 10;
+        LIMIT 5;
         """, (region_gid,))
 
         rows = cur.fetchall()
